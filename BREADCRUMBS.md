@@ -4,15 +4,14 @@
 
 ## Next action (start here)
 
-1. GitHub Actions green → Portainer **Pull and redeploy**.
-2. `docker logs monsoon-app --tail 10` — should show Uvicorn running, not psycopg2 traceback.
-3. `docker exec monsoon-waha curl -sS http://127.0.0.1:8080/health/live`
+1. **Cleanup:** `docker exec monsoon-app python infra/scripts/cleanup_loop_tasks.py --dry-run` then `--apply`
+2. **Use it:** capture + `list today` / `done N` on real tasks only
+3. **Build next:** Gmail ingestion (Priority 2) — see `docs/context-atlas.md`
 
-## Session summary
+## Direction
 
-- App crash: `postgresql://` URL used psycopg2 driver but image has psycopg v3 only.
-- Fixed `db.py` URL normalization + CI smoke import on built Docker image.
+Context atlas, not task-only. Priorities: cleanup → Gmail → WA full index → daily use.
 
 ## Branch / state
 
-- `main` — pending push/deploy with psycopg fix.
+- `main` — Phase 1 capture live on notcoolio; loop guard shipped

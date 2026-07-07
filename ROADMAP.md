@@ -1,85 +1,93 @@
 # Roadmap — monsoon
 
-## V0.1.0 — Bootstrap (current)
+**North star:** Personal **context atlas** for Prakalp — tasks, email, WhatsApp history,
+and Ollama-backed intelligence to help you do better. Not task-only.
 
-**Target:** 2026-07-07
-
-- [x] GitHub repo created
-- [x] cOcO docs scaffold
-- [x] Docker Compose + `.env.example`
-- [x] App skeleton + health endpoints
-- [ ] First push to `main`
-- [ ] Deploy on notcoolio
+See [`docs/context-atlas.md`](./docs/context-atlas.md) for the layer model.
 
 ---
 
-## V1.0 — Personal Capture & Reminder (MVP)
+## Done (2026-07-07)
 
-**Target:** ~1–2 weeks focused work
+- [x] Phase 1 — WAHA webhook capture, Postgres tasks, replies
+- [x] Self-chat loop guard, keyword aliases, Portainer sidecar networking
+- [x] psycopg3 driver fix + CI smoke tests
+- [x] Deploy on notcoolio (operator validating)
 
-### Phase 1 — Core capture loop (2–3 days)
+---
 
-- WAHA webhook receiver with auth + dedupe
-- Parse `todo ...` / `note ...` (regex) + **Ollama parse** for free-text fallback
-- Persist task in Postgres
-- Reply confirmation on WhatsApp (`Task #N created`)
+## Priority 1 — Postgres cleanup (immediate)
 
-### Phase 1b — LLM layer (1–2 days, parallel with Phase 2)
+- [x] `infra/scripts/cleanup_loop_tasks.py` (dry-run / apply)
+- [x] `infra/scripts/cleanup_postgres.sql`
+- [ ] Operator runs cleanup on notcoolio after loop incident
+- [ ] Confirm sane task list for daily use
 
-- Ollama client (`app/integrations/ollama/`)
-- Structured JSON parse: title, due, priority, bucket
-- `MONSOON_SOUL_PROMPT` for digest/nudge tone
-- See [`docs/llm-integration.md`](./docs/llm-integration.md)
+---
 
-### Phase 2 — WorkFlowy mirror (1–2 days)
+## Priority 2 — Gmail ingestion
+
+- [ ] Google Cloud project + OAuth credentials
+- [ ] Tables: `email_threads`, `email_messages`, `email_participants`
+- [ ] `app/integrations/gmail/` — client, sync job, dedupe
+- [ ] Env: `GMAIL_*` in Portainer
+- [ ] Incremental sync (5–15 min poll)
+- [ ] LLM classify: action / FYI / waiting (phase 2b)
+
+---
+
+## Priority 3 — WhatsApp full history index
+
+- [ ] Tables: `wa_chats`, `wa_messages`, `wa_contacts`, `extracted_entities`
+- [ ] WAHA backfill job: list chats → paginate all messages
+- [ ] Contact derivation (JID, phone, display name)
+- [ ] Ollama batch extract: 5W1H + phones + action items
+- [ ] Checkpoint cursors in `sync_state`
+- [ ] Nightly delta sync
+
+---
+
+## Priority 4 — Daily use (parallel)
+
+- [ ] Operator runs capture workflow (`todo`, `list`, `digest`, `done`)
+- [ ] WorkFlowy mirror (was V1 Phase 2) — when capture stable
+- [ ] Reminders + morning digest on real corpus
+- [ ] Soul prompt tuning on lenai
+
+---
+
+## V1.0 carry-over (reordered)
+
+### WorkFlowy mirror
 
 - Create/update bullets via WorkFlowy API
-- Store `workflowy_node_id` on tasks
-- `done <id>` → complete locally + sync to `Done`
+- `workflowy_node_id` on tasks
+- `done <id>` → complete + sync
 
-### Phase 3 — Reminders (1–2 days)
+### Reminders
 
-- `due_at` / `remind_at` scheduling
-- Outbound reminder via WAHA
+- `due_at` / `remind_at` → WAHA outbound
 - `snooze` command
 
-### Phase 4 — Digest + ops (1 day)
+### Digest + ops
 
-- `digest now` + morning cron
-- `/health/ready` checks DB + WAHA
-- Structured logs + outbound audit table
-
-### Phase 5 — Hardening (ongoing)
-
-- Webhook idempotency keys
-- Retry/backoff for WorkFlowy sync
-- Backup notes for Postgres volume
-
-### V1 success demo
-
-Send `todo buy milk tomorrow 8am` → stored → WorkFlowy bullet → reminder fires → `done 1` completes.
+- Cross-source digest (tasks + email + WA highlights)
+- `/health/ready`, structured logs
 
 ---
 
-## V1.1 — Smarter capture
+## V1.1+
 
-- Weekly pattern reflection (LLM over `task_events`)
-- Soul prompt presets (Executor / Strategist / Calm)
-- Simple admin status page
-
----
-
-## V1.2 — Expand
-
-- Email capture (single inbox)
-- WorkFlowy reverse-sync (read-only reconciliation)
-- Multi-device operator auth (if needed)
+- pgvector on messages/tasks for semantic recall
+- Weekly reflection over full atlas
+- Relation hints (duplicate / competing commitments)
+- Email → task promotion command
 
 ---
 
 ## Explicitly out of scope
 
-- OpenLoomi replacement
-- Team collaboration / multi-tenant
+- OpenLoomi codebase import (ideas only)
+- Multi-user / SaaS
 - WhatsApp Business API migration
 - Full mobile app

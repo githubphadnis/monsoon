@@ -62,9 +62,12 @@ WhatsApp text
 
 ## What we are not copying from OpenLoomi
 
-- Full multi-connector insight graph
-- Guest accounts / heavy Next.js UI
+- Importing OpenLoomi packages wholesale (Next.js app, connectors monolith)
+- Guest accounts / heavy web UI
 - Baileys-in-app WhatsApp (we use WAHA)
+
+We **do** grow toward the same north star: multi-source personal context atlas.
+See [`docs/context-atlas.md`](./context-atlas.md).
 
 ## References
 
