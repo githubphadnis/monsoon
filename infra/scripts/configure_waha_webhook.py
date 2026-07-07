@@ -1,8 +1,8 @@
 """Configure WAHA session webhook to point at monsoon.
 
 Usage (on host with WAHA running):
-  python infra/scripts/configure_waha_webhook.py --webhook-url http://monsoon-app:8080/api/webhooks/waha
-  --webhook-url https://your-public-url/api/webhooks/waha
+  python infra/scripts/configure_waha_webhook.py \\
+    --webhook-url http://monsoon-app:8080/api/webhooks/waha
 """
 
 from __future__ import annotations
