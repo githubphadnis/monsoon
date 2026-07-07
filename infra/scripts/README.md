@@ -7,6 +7,8 @@
 | `configure_waha_webhook.py` | Manual WAHA webhook setup |
 | `diagnose_stack.sh` | WAHA → app connectivity on notcoolio |
 | `wa_backfill.py` | Index all WA chats/messages — see `docs/whatsapp-backfill.md` |
+| `gmail_sync.py` | Sync Gmail → Postgres — see `docs/gmail-ingestion.md` |
+| `gmail_oauth_setup.py` | One-time OAuth refresh token (run on PC) |
 
 ## Postgres cleanup (Priority 1)
 

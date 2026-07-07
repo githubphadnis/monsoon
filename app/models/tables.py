@@ -171,3 +171,56 @@ class ExtractedEntity(Base):
     value: Mapped[str] = mapped_column(Text, nullable=False)
     meta: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class EmailParticipant(Base):
+    __tablename__ = "email_participants"
+    __table_args__ = (UniqueConstraint("email", name="uq_email_participants_email"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(256))
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class EmailThread(Base):
+    __tablename__ = "email_threads"
+    __table_args__ = (UniqueConstraint("gmail_thread_id", name="uq_email_threads_gmail_thread"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    gmail_thread_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    subject: Mapped[str | None] = mapped_column(Text)
+    snippet: Mapped[str | None] = mapped_column(Text)
+    last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    message_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    messages: Mapped[list["EmailMessage"]] = relationship(back_populates="thread")
+
+
+class EmailMessage(Base):
+    __tablename__ = "email_messages"
+    __table_args__ = (UniqueConstraint("gmail_message_id", name="uq_email_messages_gmail_msg"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    thread_uuid: Mapped[uuid.UUID] = mapped_column(ForeignKey("email_threads.id"), nullable=False)
+    gmail_message_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    gmail_thread_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    from_email: Mapped[str | None] = mapped_column(String(320))
+    from_name: Mapped[str | None] = mapped_column(String(256))
+    to_addrs: Mapped[list | None] = mapped_column(JSONB)
+    cc_addrs: Mapped[list | None] = mapped_column(JSONB)
+    subject: Mapped[str | None] = mapped_column(Text)
+    snippet: Mapped[str | None] = mapped_column(Text)
+    body_text: Mapped[str | None] = mapped_column(Text)
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    label_ids: Mapped[list | None] = mapped_column(JSONB)
+    raw_headers: Mapped[dict | None] = mapped_column(JSONB)
+    indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    thread: Mapped["EmailThread"] = relationship(back_populates="messages")

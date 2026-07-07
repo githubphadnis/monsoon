@@ -24,7 +24,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- WhatsApp history index: `wa_chats`, `wa_messages`, `wa_contacts`, `extracted_entities` tables.
+- Gmail ingestion: `email_threads`, `email_messages`, `email_participants`, `gmail_sync.py`, OAuth setup script.
 - `infra/scripts/wa_backfill.py` — paginated WAHA backfill with resume cursors per chat.
 - `/health/wa-index` — index counts; regex entity extract (phone, email, url).
 - `docs/whatsapp-backfill.md` — operator guide.

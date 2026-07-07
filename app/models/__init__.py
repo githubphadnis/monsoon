@@ -1,4 +1,7 @@
 from app.models.tables import (
+    EmailMessage,
+    EmailParticipant,
+    EmailThread,
     ExtractedEntity,
     InboundMessage,
     OutboundMessage,
@@ -22,4 +25,7 @@ __all__ = [
     "WaChat",
     "WaMessage",
     "ExtractedEntity",
+    "EmailParticipant",
+    "EmailThread",
+    "EmailMessage",
 ]

@@ -41,9 +41,21 @@ class Settings(BaseSettings):
     monsoon_wa_backfill_request_delay_ms: int = 250
     monsoon_wa_backfill_extract_entities: bool = True
 
+    gmail_client_id: str = ""
+    gmail_client_secret: str = ""
+    gmail_refresh_token: str = ""
+    gmail_user_id: str = "me"
+    gmail_sync_label: str = ""  # empty = all mail; or INBOX, etc.
+    gmail_sync_page_size: int = 50
+    gmail_sync_max_pages: int | None = None  # pilot cap; None = no limit
+
     @property
     def allowed_numbers_set(self) -> set[str]:
         return {n.strip() for n in self.allowed_whatsapp_numbers.split(",") if n.strip()}
+
+    @property
+    def gmail_configured(self) -> bool:
+        return bool(self.gmail_client_id and self.gmail_client_secret and self.gmail_refresh_token)
 
 
 @lru_cache

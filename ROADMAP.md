@@ -27,12 +27,13 @@ See [`docs/context-atlas.md`](./docs/context-atlas.md) for the layer model.
 
 ## Priority 2 — Gmail ingestion
 
-- [ ] Google Cloud project + OAuth credentials
-- [ ] Tables: `email_threads`, `email_messages`, `email_participants`
-- [ ] `app/integrations/gmail/` — client, sync job, dedupe
-- [ ] Env: `GMAIL_*` in Portainer
-- [ ] Incremental sync (5–15 min poll)
+- [x] Tables: `email_threads`, `email_messages`, `email_participants`
+- [x] `app/integrations/gmail/` — client, parse, sync service
+- [x] `infra/scripts/gmail_sync.py` + `gmail_oauth_setup.py`
+- [x] `/health/gmail-index`
+- [ ] Operator: OAuth refresh token in Portainer + first sync
 - [ ] LLM classify: action / FYI / waiting (phase 2b)
+- [ ] Scheduled incremental sync (cron)
 
 ---
 

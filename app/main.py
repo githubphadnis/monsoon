@@ -75,6 +75,21 @@ def health_webhook() -> dict[str, object]:
     }
 
 
+@app.get("/health/gmail-index")
+def health_gmail_index() -> dict[str, object]:
+    from app.db import SessionLocal
+    from app.services.gmail_sync import gmail_index_counts
+
+    with SessionLocal() as db:
+        counts = gmail_index_counts(db)
+    return {
+        "status": "ok" if settings.gmail_configured else "not_configured",
+        "configured": settings.gmail_configured,
+        "label": settings.gmail_sync_label or "ALL",
+        **counts,
+    }
+
+
 @app.get("/health/wa-index")
 def health_wa_index() -> dict[str, object]:
     from app.db import SessionLocal
@@ -97,6 +112,7 @@ async def health_ready() -> dict[str, object]:
         "database_configured": bool(settings.database_url),
         "waha_reachable": waha_ok,
         "ollama_reachable": ollama_ok,
+        "gmail_configured": settings.gmail_configured,
         "workflowy_configured": bool(settings.workflowy_api_key),
     }
 

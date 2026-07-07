@@ -28,6 +28,14 @@ WHATSAPP_SWAGGER_USERNAME=admin
 WHATSAPP_SWAGGER_PASSWORD=
 # WAHA_BASE_URL / webhook URL are fixed in compose (127.0.0.1 sidecar — see deploy-portainer.md §4)
 
+# --- Gmail (Priority 2 — see docs/gmail-ingestion.md) ---
+GMAIL_CLIENT_ID=
+GMAIL_CLIENT_SECRET=
+GMAIL_REFRESH_TOKEN=
+GMAIL_SYNC_LABEL=INBOX
+GMAIL_SYNC_PAGE_SIZE=50
+# GMAIL_SYNC_MAX_PAGES=10
+
 # --- Ollama on lenai ---
 OLLAMA_BASE_URL=http://lenai:11434
 OLLAMA_MODEL=llama3.2
