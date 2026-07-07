@@ -36,6 +36,11 @@ class Settings(BaseSettings):
         "You are monsoon, a concise personal assistant. Be practical, proactive, and brief."
     )
 
+    monsoon_wa_backfill_chat_page_size: int = 50
+    monsoon_wa_backfill_message_page_size: int = 100
+    monsoon_wa_backfill_request_delay_ms: int = 250
+    monsoon_wa_backfill_extract_entities: bool = True
+
     @property
     def allowed_numbers_set(self) -> set[str]:
         return {n.strip() for n in self.allowed_whatsapp_numbers.split(",") if n.strip()}

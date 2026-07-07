@@ -38,12 +38,13 @@ See [`docs/context-atlas.md`](./docs/context-atlas.md) for the layer model.
 
 ## Priority 3 — WhatsApp full history index
 
-- [ ] Tables: `wa_chats`, `wa_messages`, `wa_contacts`, `extracted_entities`
-- [ ] WAHA backfill job: list chats → paginate all messages
-- [ ] Contact derivation (JID, phone, display name)
-- [ ] Ollama batch extract: 5W1H + phones + action items
-- [ ] Checkpoint cursors in `sync_state`
-- [ ] Nightly delta sync
+- [x] Tables: `wa_chats`, `wa_messages`, `wa_contacts`, `extracted_entities`, `sync_state`
+- [x] WAHA client: list chats, paginate messages
+- [x] `infra/scripts/wa_backfill.py` + `/health/wa-index`
+- [x] Regex entity extract (phone, email, url)
+- [ ] Operator full backfill on notcoolio
+- [ ] Ollama 5W1H batch extract (phase 3b)
+- [ ] Nightly delta sync job
 
 ---
 

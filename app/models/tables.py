@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -89,4 +89,85 @@ class OutboundMessage(Base):
     provider_message_id: Mapped[str | None] = mapped_column(String(256))
     error: Mapped[str | None] = mapped_column(Text)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SyncState(Base):
+    __tablename__ = "sync_state"
+
+    key: Mapped[str] = mapped_column(String(256), primary_key=True)
+    value: Mapped[dict | None] = mapped_column(JSONB)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class WaContact(Base):
+    __tablename__ = "wa_contacts"
+    __table_args__ = (UniqueConstraint("session", "jid", name="uq_wa_contacts_session_jid"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session: Mapped[str] = mapped_column(String(64), nullable=False)
+    jid: Mapped[str] = mapped_column(String(128), nullable=False)
+    phone: Mapped[str | None] = mapped_column(String(32))
+    display_name: Mapped[str | None] = mapped_column(String(256))
+    contact_type: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="chat_derived")
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WaChat(Base):
+    __tablename__ = "wa_chats"
+    __table_args__ = (UniqueConstraint("session", "chat_id", name="uq_wa_chats_session_chat"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session: Mapped[str] = mapped_column(String(64), nullable=False)
+    chat_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    name: Mapped[str | None] = mapped_column(String(256))
+    chat_type: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    message_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    backfill_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    backfill_offset: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    messages: Mapped[list["WaMessage"]] = relationship(back_populates="chat")
+
+
+class WaMessage(Base):
+    __tablename__ = "wa_messages"
+    __table_args__ = (UniqueConstraint("session", "waha_message_id", name="uq_wa_messages_session_msg"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session: Mapped[str] = mapped_column(String(64), nullable=False)
+    chat_uuid: Mapped[uuid.UUID] = mapped_column(ForeignKey("wa_chats.id"), nullable=False)
+    chat_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    waha_message_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    from_id: Mapped[str | None] = mapped_column(String(128))
+    from_me: Mapped[bool | None] = mapped_column(Boolean)
+    body: Mapped[str | None] = mapped_column(Text)
+    has_media: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    message_ts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    message_ts_raw: Mapped[int | None] = mapped_column(BigInteger)
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+    indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    chat: Mapped["WaChat"] = relationship(back_populates="messages")
+
+
+class ExtractedEntity(Base):
+    __tablename__ = "extracted_entities"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    meta: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

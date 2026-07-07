@@ -75,6 +75,16 @@ def health_webhook() -> dict[str, object]:
     }
 
 
+@app.get("/health/wa-index")
+def health_wa_index() -> dict[str, object]:
+    from app.db import SessionLocal
+    from app.services.wa_backfill import index_counts
+
+    with SessionLocal() as db:
+        counts = index_counts(db, settings.waha_session)
+    return {"status": "ok", "session": settings.waha_session, **counts}
+
+
 @app.get("/health/ready")
 async def health_ready() -> dict[str, object]:
     waha = WahaClient(settings)

@@ -6,6 +6,7 @@
 | `cleanup_postgres.sql` | Manual psql preview/delete |
 | `configure_waha_webhook.py` | Manual WAHA webhook setup |
 | `diagnose_stack.sh` | WAHA → app connectivity on notcoolio |
+| `wa_backfill.py` | Index all WA chats/messages — see `docs/whatsapp-backfill.md` |
 
 ## Postgres cleanup (Priority 1)
 

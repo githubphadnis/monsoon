@@ -1,6 +1,7 @@
 """WAHA HTTP client for outbound WhatsApp messages."""
 
 import logging
+from urllib.parse import quote
 
 import httpx
 
@@ -55,3 +56,46 @@ class WahaClient:
                 return response.status_code < 500
         except httpx.HTTPError:
             return False
+
+    def _session_base(self) -> str:
+        return f"{self._base}/api/{self._settings.waha_session}"
+
+    async def list_chats(self, *, limit: int = 50, offset: int = 0) -> list[dict]:
+        params = {
+            "limit": limit,
+            "offset": offset,
+            "sortBy": "messageTimestamp",
+            "sortOrder": "desc",
+        }
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.get(
+                f"{self._session_base()}/chats",
+                headers=self._headers(),
+                params=params,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if isinstance(data, list):
+                return data
+            return list(data.get("chats") or data.get("data") or [])
+
+    async def get_chat_messages(
+        self,
+        chat_id: str,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict]:
+        encoded = quote(chat_id, safe="")
+        params = {"limit": limit, "offset": offset, "downloadMedia": "false"}
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.get(
+                f"{self._session_base()}/chats/{encoded}/messages",
+                headers=self._headers(),
+                params=params,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if isinstance(data, list):
+                return data
+            return list(data.get("messages") or data.get("data") or [])

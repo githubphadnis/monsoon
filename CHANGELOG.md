@@ -24,7 +24,10 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- GitHub Actions `docker-publish.yml` → GHCR `ghcr.io/githubphadnis/monsoon:main`.
+- WhatsApp history index: `wa_chats`, `wa_messages`, `wa_contacts`, `extracted_entities` tables.
+- `infra/scripts/wa_backfill.py` — paginated WAHA backfill with resume cursors per chat.
+- `/health/wa-index` — index counts; regex entity extract (phone, email, url).
+- `docs/whatsapp-backfill.md` — operator guide.
 - `docker-compose.portainer.yml` for Portainer stack deploy on notcoolio.
 - `docs/deploy-portainer.md` — full Portainer + dedicated WAHA (port 13000) guide.
 - `MONSOON_ALLOW_SELF_CHAT` — capture via WhatsApp “Message yourself”.
