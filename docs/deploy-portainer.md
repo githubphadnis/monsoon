@@ -33,19 +33,19 @@ GitHub → Packages → `monsoon` → Package settings → Change visibility →
 3. Repository URL: `https://github.com/githubphadnis/monsoon`
 4. Repository reference: `refs/heads/main`
 5. Compose path: `docker-compose.portainer.yml`
-6. **Environment variables** (stack env) — minimum:
+6. **Environment variables** (stack env) — use [`docs/portainer-env.example`](./portainer-env.example) as the checklist. **Required:**
 
-| Variable | Example / notes |
-|----------|-----------------|
-| `POSTGRES_PASSWORD` | strong secret |
-| `WAHA_API_KEY` | generate (`openssl rand -hex 32`) |
-| `WAHA_DASHBOARD_PASSWORD` | dashboard login |
-| `WHATSAPP_SWAGGER_PASSWORD` | swagger login |
-| `ALLOWED_WHATSAPP_NUMBERS` | `918291882204` (E.164, no `+`) |
-| `OLLAMA_BASE_URL` | `http://lenai:11434` (Tailscale/LAN hostname) |
-| `MONSOON_ALLOW_SELF_CHAT` | `true` — capture via WhatsApp “Message yourself” |
+| Variable | Required |
+|----------|----------|
+| `POSTGRES_PASSWORD` | yes |
+| `WAHA_API_KEY` | yes |
+| `WAHA_DASHBOARD_PASSWORD` | yes |
+| `WHATSAPP_SWAGGER_PASSWORD` | yes |
+| `ALLOWED_WHATSAPP_NUMBERS` | yes |
 
-Optional: `WORKFLOWY_API_KEY`, `OLLAMA_MODEL`, `APP_TIMEZONE`.
+`DATABASE_URL`, `APP_HOST`, `APP_PORT`, `WAHA_WEBHOOK_PATH`, cron vars are **not** used by `docker-compose.portainer.yml` (safe to omit).
+
+Set `WAHA_SESSION=monsoon` (not `default`).
 
 7. **Deploy the stack**.
 
