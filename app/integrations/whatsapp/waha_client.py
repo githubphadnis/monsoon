@@ -60,19 +60,31 @@ class WahaClient:
     def _session_base(self) -> str:
         return f"{self._base}/api/{self._settings.waha_session}"
 
-    async def list_chats(self, *, limit: int = 50, offset: int = 0) -> list[dict]:
-        params = {
+    @staticmethod
+    def chat_list_params(*, limit: int, offset: int) -> dict[str, int | str]:
+        """Query params for GET /api/{session}/chats (WAHA ChatSortField enum)."""
+        return {
             "limit": limit,
             "offset": offset,
-            "sortBy": "messageTimestamp",
+            "sortBy": "conversationTimestamp",
             "sortOrder": "desc",
         }
+
+    async def list_chats(self, *, limit: int = 50, offset: int = 0) -> list[dict]:
+        params = self.chat_list_params(limit=limit, offset=offset)
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.get(
                 f"{self._session_base()}/chats",
                 headers=self._headers(),
                 params=params,
             )
+            if response.is_error:
+                logger.error(
+                    "WAHA list_chats failed status=%s url=%s body=%s",
+                    response.status_code,
+                    response.url,
+                    response.text[:500],
+                )
             response.raise_for_status()
             data = response.json()
             if isinstance(data, list):

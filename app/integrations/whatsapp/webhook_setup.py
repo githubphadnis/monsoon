@@ -45,6 +45,38 @@ def _fetch_session(settings: Settings) -> dict[str, Any] | None:
             return None
 
 
+def _noweb_store_enabled(session_data: dict[str, Any]) -> bool:
+    store = (session_data.get("config") or {}).get("noweb", {}).get("store", {})
+    return bool(store.get("enabled"))
+
+
+def _build_session_config(settings: Settings, session_data: dict[str, Any]) -> dict[str, Any]:
+    """Merge webhook + NOWEB store settings into existing WAHA session config."""
+    config = dict(session_data.get("config") or {})
+
+    target_url = expected_webhook_url(settings)
+    webhook: dict[str, Any] = {
+        "url": target_url,
+        "events": ["message", "message.any"],
+    }
+    if settings.waha_api_key:
+        webhook["customHeaders"] = [{"name": "X-Api-Key", "value": settings.waha_api_key}]
+    config["webhooks"] = [webhook]
+
+    if settings.waha_noweb_store_enabled:
+        noweb = dict(config.get("noweb") or {})
+        store = dict(noweb.get("store") or {})
+        store["enabled"] = True
+        if settings.waha_noweb_store_full_sync:
+            store["fullSync"] = True
+        elif "fullSync" not in store:
+            store["fullSync"] = False
+        noweb["store"] = store
+        config["noweb"] = noweb
+
+    return {"config": config}
+
+
 def get_webhook_status(settings: Settings) -> dict[str, Any]:
     """Return current vs expected WAHA webhook configuration."""
     target_url = expected_webhook_url(settings)
@@ -57,6 +89,8 @@ def get_webhook_status(settings: Settings) -> dict[str, Any]:
             "expected_url": target_url,
             "current_urls": [],
             "events_ok": False,
+            "noweb_store_enabled": False,
+            "noweb_store_expected": settings.waha_noweb_store_enabled,
             "detail": "session_not_found",
         }
 
@@ -69,16 +103,19 @@ def get_webhook_status(settings: Settings) -> dict[str, Any]:
         and {"message", "message.any"}.issubset(set(hook.get("events") or []))
         for hook in webhooks
     )
+    store_ok = (not settings.waha_noweb_store_enabled) or _noweb_store_enabled(session_data)
     status = session_data.get("status")
 
     return {
-        "configured": bool(url_ok and events_ok),
+        "configured": bool(url_ok and events_ok and store_ok),
         "session": settings.waha_session,
         "session_status": status,
         "expected_url": target_url,
         "current_urls": current_urls,
         "events_ok": events_ok,
-        "detail": None if url_ok and events_ok else "webhook_mismatch",
+        "noweb_store_enabled": _noweb_store_enabled(session_data),
+        "noweb_store_expected": settings.waha_noweb_store_enabled,
+        "detail": None if url_ok and events_ok and store_ok else "webhook_or_store_mismatch",
     }
 
 
@@ -101,13 +138,6 @@ def configure_waha_webhook(settings: Settings) -> bool:
         )
 
     headers = _session_headers(settings)
-    webhook: dict = {
-        "url": target_url,
-        "events": ["message", "message.any"],
-    }
-    if settings.waha_api_key:
-        webhook["customHeaders"] = [{"name": "X-Api-Key", "value": settings.waha_api_key}]
-
     base = settings.waha_base_url.rstrip("/")
     session = settings.waha_session
 
@@ -121,6 +151,7 @@ def configure_waha_webhook(settings: Settings) -> bool:
                 )
                 return False
             response.raise_for_status()
+            session_data = response.json()
         except httpx.HTTPError as exc:
             logger.warning("WAHA not ready for webhook setup: %s", exc)
             return False
@@ -128,7 +159,7 @@ def configure_waha_webhook(settings: Settings) -> bool:
         response = client.put(
             f"{base}/api/sessions/{session}",
             headers=headers,
-            json={"config": {"webhooks": [webhook]}},
+            json=_build_session_config(settings, session_data),
         )
         try:
             response.raise_for_status()
@@ -137,7 +168,12 @@ def configure_waha_webhook(settings: Settings) -> bool:
             logger.warning("WAHA webhook configure failed: %s body=%s", exc, body[:500])
             return False
 
-    logger.info("WAHA webhook configured: %s → %s", session, target_url)
+    logger.info(
+        "WAHA session configured: %s webhook=%s noweb_store=%s",
+        session,
+        target_url,
+        settings.waha_noweb_store_enabled,
+    )
     return True
 
 

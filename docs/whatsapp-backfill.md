@@ -45,10 +45,12 @@ docker exec monsoon-app python infra/scripts/wa_backfill.py --chat-id 9182918822
 
 ## WAHA API
 
-- `GET /api/{session}/chats?limit=&offset=`
+- `GET /api/{session}/chats?limit=&offset=&sortBy=conversationTimestamp&sortOrder=desc`
 - `GET /api/{session}/chats/{chatId}/messages?limit=&offset=&downloadMedia=false`
 
-Engine: **NOWEB** (your stack). History depth depends on what WAHA has synced locally.
+Engine: **NOWEB** (your stack). **NOWEB store must be enabled** on the WAHA session
+(`config.noweb.store.enabled=true`) — monsoon sets this on startup via webhook reconciler.
+History depth depends on what WAHA has synced locally (~3 months with `fullSync=false`).
 
 ## Next (3b)
 

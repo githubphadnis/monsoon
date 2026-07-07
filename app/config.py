@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     monsoon_wa_backfill_request_delay_ms: int = 250
     monsoon_wa_backfill_extract_entities: bool = True
 
+    waha_noweb_store_enabled: bool = True
+    waha_noweb_store_full_sync: bool = False
+
     gmail_client_id: str = ""
     gmail_client_secret: str = ""
     gmail_refresh_token: str = ""
