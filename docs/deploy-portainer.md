@@ -86,6 +86,7 @@ docker logs "$(docker ps -q --filter name=waha | head -1)" --tail 80
 | Symptom | Likely cause |
 |---------|----------------|
 | Browser timeout / connection refused from PC | No SSH tunnel; WAHA is localhost-only on notcoolio |
+| `Could not resolve host: app` from waha container | Webhook URL must use `monsoon-app` or app container **IP** (see §4) |
 | Wrong port | Use **13000**, not 3000 |
 | 404 on `/` | Normal — use **`/dashboard`** |
 | Login fails | Check `WAHA_DASHBOARD_PASSWORD` in Portainer env |
@@ -101,7 +102,38 @@ Portainer on the `app` service.
 
 ### Option A — curl on notcoolio (easiest)
 
-SSH to notcoolio and run (replace session name and API key):
+**Verify WAHA can reach the app** (must return `{"status":"ok"}`):
+
+```bash
+docker exec monsoon-waha curl -sS -m 5 http://monsoon-app:8080/health/live
+```
+
+If you see `Could not resolve host: app` — the webhook URL must **not** use `http://app:8080`.
+Use the app container IP instead:
+
+```bash
+APP_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' monsoon-app)
+echo "App IP: $APP_IP"
+
+curl -sS -X PUT "http://127.0.0.1:13000/api/sessions/prakalp" \
+  -H "Content-Type: application/json" \
+  -H "X-Api-Key: YOUR_WAHA_API_KEY" \
+  -d "{
+    \"config\": {
+      \"webhooks\": [{
+        \"url\": \"http://${APP_IP}:8080/api/webhooks/waha\",
+        \"events\": [\"message\", \"message.any\"],
+        \"customHeaders\": [
+          {\"name\": \"X-Api-Key\", \"value\": \"YOUR_WAHA_API_KEY\"}
+        ]
+      }]
+    }
+  }"
+```
+
+If DNS works (`monsoon-app` resolves), use `http://monsoon-app:8080/api/webhooks/waha` instead of the IP.
+
+Legacy one-liner (only if `app` resolves inside `monsoon-waha`):
 
 ```bash
 curl -sS -X PUT "http://127.0.0.1:13000/api/sessions/prakalp" \

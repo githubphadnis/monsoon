@@ -27,6 +27,7 @@ services:
       - monsoon
 
   app:
+    container_name: monsoon-app
     image: ghcr.io/githubphadnis/monsoon:main
     restart: unless-stopped
     environment:
@@ -61,6 +62,7 @@ services:
           - monsoon-app
 
   waha:
+    container_name: monsoon-waha
     image: devlikeapro/waha:latest
     restart: unless-stopped
     environment:
