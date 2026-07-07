@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,6 +49,13 @@ class Settings(BaseSettings):
     gmail_sync_label: str = ""  # empty = all mail; or INBOX, etc.
     gmail_sync_page_size: int = 50
     gmail_sync_max_pages: int | None = None  # pilot cap; None = no limit
+
+    @field_validator("gmail_sync_max_pages", mode="before")
+    @classmethod
+    def _empty_optional_int(cls, v: object) -> object:
+        if v == "" or v is None:
+            return None
+        return v
 
     @property
     def allowed_numbers_set(self) -> set[str]:
