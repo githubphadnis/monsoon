@@ -30,6 +30,22 @@ def test_to_do_hyphenated():
     assert parsed.title == "pick up parcel"
 
 
+def test_remind_me_to():
+    settings = Settings()
+    parsed = parse_with_regex("remind me to call dentist tomorrow", settings)
+    assert parsed is not None
+    assert parsed.kind == "todo"
+    assert "call dentist" in (parsed.title or "")
+
+
+def test_remember_to():
+    settings = Settings()
+    parsed = parse_with_regex("remember to buy flowers", settings)
+    assert parsed is not None
+    assert parsed.kind == "todo"
+    assert parsed.title == "buy flowers"
+
+
 def test_done_command():
     settings = Settings()
     parsed = parse_with_regex("done 7", settings)
@@ -38,8 +54,42 @@ def test_done_command():
     assert parsed.task_number == 7
 
 
-def test_help_command():
+def test_complete_command():
     settings = Settings()
-    parsed = parse_with_regex("help", settings)
+    parsed = parse_with_regex("complete 7", settings)
     assert parsed is not None
-    assert parsed.kind == "help"
+    assert parsed.kind == "done"
+    assert parsed.task_number == 7
+
+
+def test_mark_done_command():
+    settings = Settings()
+    parsed = parse_with_regex("mark 7 done", settings)
+    assert parsed is not None
+    assert parsed.kind == "done"
+    assert parsed.task_number == 7
+
+
+def test_list_show_tasks_aliases():
+    settings = Settings()
+    for cmd in ("list today", "show today", "tasks today", "list", "tasks"):
+        parsed = parse_with_regex(cmd, settings)
+        assert parsed is not None, cmd
+        assert parsed.kind == "list"
+        assert parsed.status == "today"
+
+
+def test_digest_and_summary():
+    settings = Settings()
+    for cmd in ("digest", "digest now", "summary"):
+        parsed = parse_with_regex(cmd, settings)
+        assert parsed is not None, cmd
+        assert parsed.kind == "digest"
+
+
+def test_help_aliases():
+    settings = Settings()
+    for cmd in ("help", "?", "commands"):
+        parsed = parse_with_regex(cmd, settings)
+        assert parsed is not None, cmd
+        assert parsed.kind == "help"

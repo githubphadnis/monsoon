@@ -18,12 +18,13 @@ logger = logging.getLogger("monsoon.capture")
 
 HELP_TEXT = """monsoon — capture & remind
 
-todo / to do <task>   create task
-note <text>          save a note
-done <id>            mark complete
-list today           open tasks
-digest now           summary (stub)
-help                 this message
+todo / to do <task>       create task
+remind me to <task>       create task
+note <text>               save a note
+done / complete <id>      mark complete
+list / show today         open tasks
+digest / summary          summary
+help / ?                  this message
 
 Free text works too — I'll parse it."""
 
@@ -144,7 +145,7 @@ class CaptureService:
 
     def _complete_task(self, user: User, task_number: int | None) -> str:
         if not task_number:
-            return "Usage: `done <id>`"
+            return "Usage: `done <id>` or `complete <id>`"
         task = self._db.scalar(
             select(Task).where(Task.user_id == user.id, Task.display_number == task_number)
         )

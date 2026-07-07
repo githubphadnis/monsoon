@@ -9,7 +9,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- Self-chat feedback loop: ignore outbound echoes (provider message id, body match, bot reply templates).
+- Parser keyword aliases: `to do`/`to-do`, `remind me to`, `complete`/`finish`, `show`/`tasks`, `summary`, `?`.
 - Commit outbound message immediately after send so echo webhooks see sent state.
 - CI/docker-publish: smoke-import app and built image to catch driver mismatches before deploy.
 - `/health/webhook` — shows current vs expected webhook URL and session status.

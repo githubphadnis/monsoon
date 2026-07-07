@@ -8,12 +8,26 @@ from app.config import Settings
 from app.integrations.ollama.client import OllamaClient
 from app.schemas.capture import ParsedCapture
 
+# --- Keyword patterns (case-insensitive) ---
+# todo:     todo | to do | to-do
+# note:     note
+# done:     done | complete | finish | mark done N | mark N done
+# list:     list | show | task(s) [bucket]
+# digest:   digest | digest now | summary
+# help:     help | ? | commands
+# remind:   remind [me] [to] … | remember to …
+
 TODO_RE = re.compile(r"^to[\s-]*do\s+(.+)$", re.IGNORECASE)
 NOTE_RE = re.compile(r"^note\s+(.+)$", re.IGNORECASE)
-DONE_RE = re.compile(r"^done\s+(\d+)$", re.IGNORECASE)
-LIST_RE = re.compile(r"^list(?:\s+(\w+))?$", re.IGNORECASE)
-DIGEST_RE = re.compile(r"^digest(?:\s+now)?$", re.IGNORECASE)
-HELP_RE = re.compile(r"^help$", re.IGNORECASE)
+REMIND_RE = re.compile(
+    r"^remind(?:\s+me)?(?:\s+to)?\s+(.+)$|^remember(?:\s+to)?\s+(.+)$",
+    re.IGNORECASE,
+)
+DONE_RE = re.compile(r"^(?:done|complete|finish|mark\s+done)\s+#?(\d+)\s*$", re.IGNORECASE)
+DONE_MARK_RE = re.compile(r"^mark\s+#?(\d+)\s+done\s*$", re.IGNORECASE)
+LIST_RE = re.compile(r"^(?:list|show|tasks?)(?:\s+(\w+))?\s*$", re.IGNORECASE)
+DIGEST_RE = re.compile(r"^(?:digest(?:\s+now)?|summary)\s*$", re.IGNORECASE)
+HELP_RE = re.compile(r"^(?:help|\?|commands)\s*$", re.IGNORECASE)
 
 RELATIVE_RE = re.compile(
     r"\b(tomorrow|today)\b(?:\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?",
@@ -51,6 +65,20 @@ def _apply_relative_datetime(text: str, settings: Settings) -> tuple[str, dateti
     return cleaned, due
 
 
+def _capture_from_match(match: re.Match[str], settings: Settings, *, kind: str, body: str) -> ParsedCapture:
+    remainder = next(g for g in match.groups() if g is not None).strip()
+    title, due_at = _apply_relative_datetime(remainder, settings)
+    status = "scheduled" if due_at else "inbox"
+    return ParsedCapture(
+        kind=kind,
+        title=title,
+        due_at=due_at,
+        remind_at=due_at,
+        status=status,
+        raw_command=body,
+    )
+
+
 def parse_with_regex(text: str, settings: Settings) -> ParsedCapture | None:
     body = text.strip()
     if not body:
@@ -62,7 +90,7 @@ def parse_with_regex(text: str, settings: Settings) -> ParsedCapture | None:
     if DIGEST_RE.match(body):
         return ParsedCapture(kind="digest")
 
-    done_match = DONE_RE.match(body)
+    done_match = DONE_RE.match(body) or DONE_MARK_RE.match(body)
     if done_match:
         return ParsedCapture(kind="done", task_number=int(done_match.group(1)))
 
@@ -71,21 +99,10 @@ def parse_with_regex(text: str, settings: Settings) -> ParsedCapture | None:
         bucket = (list_match.group(1) or "today").lower()
         return ParsedCapture(kind="list", status=bucket)
 
-    for pattern, kind in ((TODO_RE, "todo"), (NOTE_RE, "note")):
+    for pattern, kind in ((TODO_RE, "todo"), (REMIND_RE, "todo"), (NOTE_RE, "note")):
         match = pattern.match(body)
-        if not match:
-            continue
-        remainder = match.group(1).strip()
-        title, due_at = _apply_relative_datetime(remainder, settings)
-        status = "scheduled" if due_at else "inbox"
-        return ParsedCapture(
-            kind=kind,
-            title=title,
-            due_at=due_at,
-            remind_at=due_at,
-            status=status,
-            raw_command=body,
-        )
+        if match:
+            return _capture_from_match(match, settings, kind=kind, body=body)
 
     return None
 
