@@ -9,7 +9,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- App crash on startup: map `postgresql://` to `postgresql+psycopg://` (requirements use psycopg v3, not psycopg2).
+- Self-chat feedback loop: ignore outbound echoes (provider message id, body match, bot reply templates).
+- Commit outbound message immediately after send so echo webhooks see sent state.
 - CI/docker-publish: smoke-import app and built image to catch driver mismatches before deploy.
 - `/health/webhook` — shows current vs expected webhook URL and session status.
 - Self-chat reply: fall back to `me.id` when `remoteJidAlt` missing on `@lid` messages.

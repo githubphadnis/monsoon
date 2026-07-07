@@ -212,7 +212,9 @@ class CaptureService:
             result = await self._waha.send_text(chat_id, text)
             outbound.status = "sent"
             outbound.sent_at = datetime.now(ZoneInfo("UTC"))
-            outbound.provider_message_id = str(result.get("id", "")) or None
+            outbound.provider_message_id = str(result.get("id", "") or "") or None
+            # Commit before WAHA webhook echo arrives (self-chat fromMe loop).
+            self._db.commit()
         except Exception as exc:
             outbound.status = "error"
             outbound.error = str(exc)

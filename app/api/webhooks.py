@@ -9,6 +9,7 @@ from app.config import Settings, get_settings
 from app.db import get_db
 from app.schemas.waha import WahaMessagePayload, WahaWebhookEvent
 from app.services.capture_service import CaptureService
+from app.services.outbound_guard import is_outbound_echo
 from app.services.sender_identity import resolve_reply_chat_id, resolve_sender_phone
 
 logger = logging.getLogger("monsoon.api.webhooks")
@@ -59,6 +60,10 @@ async def waha_webhook(
     text = (payload.body or "").strip()
     if not text:
         return {"status": "ignored", "reason": "empty"}
+
+    if is_outbound_echo(db, message_id=payload.id, text=text):
+        logger.info("Ignored bot echo message_id=%s", payload.id)
+        return {"status": "ignored", "reason": "bot_echo"}
 
     sender = payload.from_
     payload_extra = payload.model_dump() if hasattr(payload, "model_dump") else {}
