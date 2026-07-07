@@ -35,9 +35,17 @@ class WahaClient:
                 headers=self._headers(),
                 json=payload,
             )
+            if response.is_error:
+                logger.error(
+                    "WAHA sendText failed status=%s session=%s chatId=%s body=%s",
+                    response.status_code,
+                    self._settings.waha_session,
+                    chat_id,
+                    response.text[:500],
+                )
             response.raise_for_status()
             data = response.json()
-            logger.info("Sent WhatsApp message to %s", chat_id)
+            logger.info("Sent WhatsApp message to %s via session %s", chat_id, self._settings.waha_session)
             return data
 
     async def ping(self) -> bool:

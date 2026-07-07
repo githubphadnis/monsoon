@@ -112,6 +112,26 @@ Requirements:
    `app` container once after QR scan.
 3. Stack uses fixed container names (`monsoon-app`, `monsoon-waha`) on network `monsoon`.
 
+### Event Monitor shows messages but no WhatsApp reply
+
+WAHA **Event Monitor** only proves WAHA received the message on the phone — it does **not**
+prove the webhook reached monsoon. Check:
+
+```bash
+curl -s http://127.0.0.1:8080/health/webhook | python3 -m json.tool
+docker exec monsoon-waha curl -sS http://monsoon-app:8080/health/live
+docker logs monsoon-app --tail 50 | grep -E 'Webhook received|sendText|webhook'
+```
+
+| `health/webhook` | Meaning |
+|------------------|---------|
+| `"status": "ok"` + `current_urls` contains `monsoon-app` | Webhook wired — check app logs for `sendText` errors |
+| `"status": "misconfigured"` + old `app` URL | Redeploy app (auto-reconciler fixes every ~60s) or recreate `monsoon-app` |
+| `session_not_found` | `WAHA_SESSION` mismatch — must match dashboard session (`prakalp`) |
+
+`WAHA_SESSION=default` while dashboard shows `prakalp` breaks **outbound** replies even if
+inbound webhooks work.
+
 Verify after redeploy:
 
 ```bash

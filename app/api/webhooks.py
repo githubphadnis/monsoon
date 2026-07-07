@@ -73,7 +73,9 @@ async def waha_webhook(
         logger.warning("Rejected sender %s (from_me=%s)", sender, payload.from_me)
         raise HTTPException(status_code=403, detail="Sender not allowed")
 
-    chat_id = resolve_reply_chat_id(sender, payload_extra)
+    me = body.get("me") if isinstance(body.get("me"), dict) else {}
+    me_id = str(me.get("id", "")) or None
+    chat_id = resolve_reply_chat_id(sender, payload_extra, me_id=me_id)
     logger.info("Processing capture from=%s chat_id=%s phone=%s", sender, chat_id, phone)
     service = CaptureService(db, settings)
     try:

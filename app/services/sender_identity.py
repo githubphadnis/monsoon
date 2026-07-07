@@ -46,7 +46,20 @@ def resolve_sender_phone(
     return None
 
 
-def resolve_reply_chat_id(from_id: str, payload_extra: dict[str, Any] | None) -> str:
+def _to_cus_jid(jid: str) -> str:
+    if jid.endswith("@c.us"):
+        return jid
+    if jid.endswith("@s.whatsapp.net"):
+        return f"{phone_from_chat_id(jid)}@c.us"
+    return jid
+
+
+def resolve_reply_chat_id(
+    from_id: str,
+    payload_extra: dict[str, Any] | None,
+    *,
+    me_id: str | None = None,
+) -> str:
     """Prefer @c.us JID for replies when self-chat uses @lid."""
     if not from_id.endswith("@lid"):
         return from_id
@@ -56,7 +69,9 @@ def resolve_reply_chat_id(from_id: str, payload_extra: dict[str, Any] | None) ->
     key = data.get("key") if isinstance(data.get("key"), dict) else {}
     alt = key.get("remoteJidAlt")
     if isinstance(alt, str) and alt:
-        if alt.endswith("@s.whatsapp.net"):
-            return f"{phone_from_chat_id(alt)}@c.us"
-        return alt
+        return _to_cus_jid(alt)
+
+    if me_id:
+        return _to_cus_jid(me_id)
+
     return from_id

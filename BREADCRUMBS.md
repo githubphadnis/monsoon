@@ -5,13 +5,14 @@
 ## Next action (start here)
 
 1. Wait for GitHub Actions green → Portainer **Pull and redeploy** `monsoon` stack.
-2. Confirm `docker logs monsoon-app | grep "WAHA webhook configured"`.
+2. On notcoolio: `curl -s http://127.0.0.1:8080/health/webhook` — expect `"status":"ok"` and `monsoon-app` in `current_urls`.
 3. WhatsApp test: `todo test monsoon reply`.
 
 ## Session summary
 
-- Root cause: WAHA could not resolve hostname `app` — fixed with `container_name` + auto webhook on app startup.
+- Event Monitor ≠ webhook delivery. User fixed `WAHA_SESSION=prakalp`; still no reply — likely webhook still pointed at old `app` hostname or image not pulled.
+- Shipped: webhook reconciler (60s), `/health/webhook`, sendText error logging, `pull_policy: always`.
 
 ## Branch / state
 
-- `main` — auto webhook + network `monsoon` + containers `monsoon-app` / `monsoon-waha`.
+- `main` — pending push with webhook reconciler + diagnostics.

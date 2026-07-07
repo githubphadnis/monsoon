@@ -43,3 +43,14 @@ def test_resolve_reply_chat_id_lid_to_cus():
         {"_data": {"key": {"remoteJidAlt": "918291882204@s.whatsapp.net"}}},
     )
     assert chat == "918291882204@c.us"
+
+
+def test_resolve_reply_chat_id_lid_falls_back_to_me():
+    from app.services.sender_identity import resolve_reply_chat_id
+
+    chat = resolve_reply_chat_id(
+        "29304595423273@lid",
+        {},
+        me_id="918291882204@c.us",
+    )
+    assert chat == "918291882204@c.us"

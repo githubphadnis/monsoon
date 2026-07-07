@@ -6,31 +6,25 @@
 
 ## Current state / WIP
 
-- **Deployed on notcoolio** via Portainer (`docker-compose.portainer.yml`) — user reports stack up, Postgres OK.
-- GHCR: `ghcr.io/githubphadnis/monsoon:main`.
-- Dedicated **monsoon WAHA** on **`127.0.0.1:13000`** — localhost-only; reach via SSH tunnel from PC.
-- Phase 1 app code shipped; webhook not yet wired until WAHA paired.
+- **Deployed on notcoolio** via Portainer — WAHA paired session `prakalp`, WORKING.
+- User sees Event Monitor updates but **no WhatsApp replies** after fixing `WAHA_SESSION`.
+- Likely cause: webhook URL still `http://app:8080` (WAHA cannot resolve `app`) — inbound never reaches monsoon.
 
 ## Broken things
 
-- **WAHA dashboard unreachable from PC** if opening `http://notcoolio:13000` — expected; use SSH tunnel (see `docs/deploy-portainer.md` §3).
+- WhatsApp capture loop: no reply despite messages in WAHA Event Monitor.
+- Diagnose on notcoolio: `curl http://127.0.0.1:8080/health/webhook` and `docker logs monsoon-app`.
 
 ## Next immediate steps
 
-1. SSH tunnel + open `http://127.0.0.1:13000/dashboard`; start session **`default`**, scan QR (WAHA Core — no custom session names).
-2. Run `configure_waha_webhook.py` (webhook → `http://app:8080/api/webhooks/waha`).
-3. WhatsApp capture test (`todo …`).
-4. Phase 2: WorkFlowy sync.
+1. Push latest `main` → Portainer pull & redeploy (app image `pull_policy: always`).
+2. Confirm `health/webhook` shows `"configured": true` and URL contains `monsoon-app`.
+3. `bash infra/scripts/diagnose_stack.sh` on notcoolio if still broken.
+4. WhatsApp: `todo test monsoon reply`.
 
 ## Environment
 
 | Host | Role |
 |------|------|
-| `notcoolio` | Docker / Portainer — target deploy |
-| `lenai` | Ollama (optional, v1.1+) |
-
-## Secrets (do not commit)
-
-- `WORKFLOWY_API_KEY` — https://workflowy.com/api-key
-- `WAHA_API_KEY` — from `docker compose run ... init-waha`
-- `DATABASE_URL` — Postgres connection string
+| `notcoolio` | Docker / Portainer — monsoon stack |
+| `lenai` | Ollama (optional) |

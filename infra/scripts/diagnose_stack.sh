@@ -19,6 +19,8 @@ curl -sS "http://127.0.0.1:8080/health/live" || echo "FAIL"
 echo
 curl -sS "http://127.0.0.1:8080/health/db" || echo "FAIL"
 echo
+curl -sS "http://127.0.0.1:8080/health/webhook" || echo "FAIL"
+echo
 
 if [[ -n "${WAHA_CTN}" ]]; then
   echo "=== WAHA → app DNS (from waha container) ==="
@@ -36,7 +38,7 @@ if [[ -n "${APP_CTN}" && -n "${WAHA_CTN}" ]]; then
   APP_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$APP_CTN")
   echo
   echo "=== Manual webhook POST (from waha → app) ==="
-  docker exec "$WAHA_CTN" sh -c "curl -sS -m 10 -X POST http://app:8080/api/webhooks/waha \
+  docker exec "$WAHA_CTN" sh -c "curl -sS -m 10 -X POST http://monsoon-app:8080/api/webhooks/waha \
     -H 'Content-Type: application/json' \
     -H 'X-Api-Key: ${API_KEY}' \
     -d '{\"event\":\"message.any\",\"session\":\"${SESSION}\",\"me\":{\"id\":\"918291882204@c.us\"},\"payload\":{\"id\":\"diag_manual_$(date +%s)\",\"from\":\"29304595423273@lid\",\"fromMe\":true,\"body\":\"todo diagnose webhook\",\"_data\":{\"key\":{\"remoteJidAlt\":\"918291882204@s.whatsapp.net\"}}}}'"

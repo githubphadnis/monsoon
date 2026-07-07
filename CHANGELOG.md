@@ -9,7 +9,11 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- Portainer deploy: WAHA webhook auto-configured on app startup (`http://monsoon-app:8080`).
+- Webhook reconciler: background loop re-points WAHA at `monsoon-app` every 60s (fixes stale `app` hostname).
+- `/health/webhook` — shows current vs expected webhook URL and session status.
+- Self-chat reply: fall back to `me.id` when `remoteJidAlt` missing on `@lid` messages.
+- WAHA `sendText` failures now log HTTP status + response body.
+- Portainer: `pull_policy: always` on app image so redeploy pulls latest GHCR build.
 - Docker DNS: fixed `container_name` (`monsoon-app`, `monsoon-waha`) and network `monsoon`.
 - Self-chat capture: resolve `@lid` sender via `me.id` so allowed-number check passes.
 - Webhook subscribes to `message.any` (required for Message-yourself on WAHA NOWEB).
