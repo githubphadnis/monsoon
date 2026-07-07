@@ -9,7 +9,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- Webhook reconciler: background loop re-points WAHA at `monsoon-app` every 60s (fixes stale `app` hostname).
+- Portainer networking: WAHA uses `network_mode: service:app` — webhooks via `127.0.0.1:8080` (no Docker DNS).
 - `/health/webhook` — shows current vs expected webhook URL and session status.
 - Self-chat reply: fall back to `me.id` when `remoteJidAlt` missing on `@lid` messages.
 - WAHA `sendText` failures now log HTTP status + response body.

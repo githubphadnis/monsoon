@@ -18,7 +18,7 @@ RECONCILE_INTERVAL_SECONDS = 60
 def expected_webhook_url(settings: Settings) -> str:
     if settings.monsoon_webhook_target_url:
         return settings.monsoon_webhook_target_url
-    return f"http://monsoon-app:8080{settings.waha_webhook_path}"
+    return f"http://127.0.0.1:8080{settings.waha_webhook_path}"
 
 
 def _session_headers(settings: Settings) -> dict[str, str]:
@@ -162,7 +162,7 @@ async def ensure_waha_webhook(settings: Settings, *, attempts: int = 12) -> None
 
 
 async def webhook_reconciler_loop(settings: Settings) -> None:
-    """Keep WAHA webhook pointed at monsoon-app (handles stale `app` hostname, late pairing)."""
+    """Keep WAHA webhook pointed at localhost (WAHA shares app network namespace)."""
     if not settings.monsoon_auto_webhook:
         return
 

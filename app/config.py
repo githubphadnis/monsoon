@@ -18,13 +18,13 @@ class Settings(BaseSettings):
     workflowy_api_key: str = ""
     workflowy_root_node_id: str = ""
 
-    waha_base_url: str = "http://waha:3000"
+    waha_base_url: str = "http://127.0.0.1:3000"
     waha_api_key: str = ""
     waha_session: str = "default"
     waha_webhook_path: str = "/api/webhooks/waha"
 
     monsoon_auto_webhook: bool = True
-    monsoon_webhook_target_url: str = "http://monsoon-app:8080/api/webhooks/waha"
+    monsoon_webhook_target_url: str = "http://127.0.0.1:8080/api/webhooks/waha"
 
     allowed_whatsapp_numbers: str = ""
     monsoon_allow_self_chat: bool = True

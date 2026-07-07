@@ -26,7 +26,7 @@ WAHA_DASHBOARD_USERNAME=admin
 WAHA_DASHBOARD_PASSWORD=
 WHATSAPP_SWAGGER_USERNAME=admin
 WHATSAPP_SWAGGER_PASSWORD=
-# WAHA_BASE_URL / webhook URL are fixed in compose (monsoon-waha, monsoon-app)
+# WAHA_BASE_URL / webhook URL are fixed in compose (127.0.0.1 sidecar — see deploy-portainer.md §4)
 
 # --- Ollama on lenai ---
 OLLAMA_BASE_URL=http://lenai:11434

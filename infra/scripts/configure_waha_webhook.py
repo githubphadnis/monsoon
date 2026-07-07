@@ -2,7 +2,7 @@
 
 Usage (on host with WAHA running):
   python infra/scripts/configure_waha_webhook.py \\
-    --webhook-url http://monsoon-app:8080/api/webhooks/waha
+    --webhook-url http://127.0.0.1:8080/api/webhooks/waha
 """
 
 from __future__ import annotations

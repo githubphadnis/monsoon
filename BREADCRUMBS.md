@@ -4,15 +4,15 @@
 
 ## Next action (start here)
 
-1. Wait for GitHub Actions green → Portainer **Pull and redeploy** `monsoon` stack.
-2. On notcoolio: `curl -s http://127.0.0.1:8080/health/webhook` — expect `"status":"ok"` and `monsoon-app` in `current_urls`.
-3. WhatsApp test: `todo test monsoon reply`.
+1. GitHub Actions green → Portainer **Pull and redeploy** (full stack — WAHA `network_mode` changed).
+2. Verify: `docker exec monsoon-waha curl -sS http://127.0.0.1:8080/health/live`
+3. WhatsApp: `todo test monsoon reply`
 
 ## Session summary
 
-- Event Monitor ≠ webhook delivery. User fixed `WAHA_SESSION=prakalp`; still no reply — likely webhook still pointed at old `app` hostname or image not pulled.
-- Shipped: webhook reconciler (60s), `/health/webhook`, sendText error logging, `pull_policy: always`.
+- Docker DNS between waha and app broken on notcoolio (`monsoon-app` unresolved).
+- Fix: WAHA `network_mode: service:app` — localhost sidecar, no Cloudflare.
 
 ## Branch / state
 
-- `main` — pending push with webhook reconciler + diagnostics.
+- `main` — sidecar networking pushed; pending redeploy on notcoolio.

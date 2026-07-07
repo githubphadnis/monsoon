@@ -86,7 +86,7 @@ docker logs "$(docker ps -q --filter name=waha | head -1)" --tail 80
 | Symptom | Likely cause |
 |---------|----------------|
 | Browser timeout / connection refused from PC | No SSH tunnel; WAHA is localhost-only on notcoolio |
-| `Could not resolve host: app` from waha container | Webhook URL must use `monsoon-app` or app container **IP** (see §4) |
+| `Could not resolve host` from waha → app | Old stack layout — pull latest compose; WAHA now shares app's network via `127.0.0.1` |
 | Wrong port | Use **13000**, not 3000 |
 | 404 on `/` | Normal — use **`/dashboard`** |
 | Login fails | Check `WAHA_DASHBOARD_PASSWORD` in Portainer env |
@@ -97,20 +97,27 @@ docker logs "$(docker ps -q --filter name=waha | head -1)" --tail 80
 
 ## 4. WAHA webhook → monsoon app (automatic)
 
+**Networking:** WAHA uses `network_mode: service:app` — it shares the app container's
+network namespace. Webhooks and API calls use **`127.0.0.1`** (no Docker DNS between
+WAHA and app). This is a standard sidecar pattern when two containers must talk
+reliably; Cloudflare tunnels are **not** needed for internal traffic.
+
 On startup the **app container** configures WAHA automatically:
 
-- Webhook URL: `http://monsoon-app:8080/api/webhooks/waha` (Docker DNS via `container_name`)
+- Webhook URL: `http://127.0.0.1:8080/api/webhooks/waha`
 - Events: `message`, `message.any`
 - Header: `X-Api-Key` = your `WAHA_API_KEY`
+- App → WAHA: `http://127.0.0.1:3000` (WAHA port published via app as host **13000**)
 
 **You do not need manual `curl` webhook setup** after Portainer pull & redeploy.
 
 Requirements:
 
 1. `WAHA_SESSION` in Portainer must match your paired session name (e.g. `prakalp`).
-2. WAHA session must be **WORKING** (paired). If app starts before pairing, redeploy the
-   `app` container once after QR scan.
-3. Stack uses fixed container names (`monsoon-app`, `monsoon-waha`) on network `monsoon`.
+2. WAHA session must be **WORKING** (paired). If app starts before pairing, redeploy once
+   after QR scan.
+3. **Full stack redeploy** after compose changes (WAHA `network_mode` change requires
+   recreating both `monsoon-app` and `monsoon-waha`).
 
 ### Event Monitor shows messages but no WhatsApp reply
 
@@ -119,14 +126,14 @@ prove the webhook reached monsoon. Check:
 
 ```bash
 curl -s http://127.0.0.1:8080/health/webhook | python3 -m json.tool
-docker exec monsoon-waha curl -sS http://monsoon-app:8080/health/live
+docker exec monsoon-waha curl -sS http://127.0.0.1:8080/health/live
 docker logs monsoon-app --tail 50 | grep -E 'Webhook received|sendText|webhook'
 ```
 
 | `health/webhook` | Meaning |
 |------------------|---------|
-| `"status": "ok"` + `current_urls` contains `monsoon-app` | Webhook wired — check app logs for `sendText` errors |
-| `"status": "misconfigured"` + old `app` URL | Redeploy app (auto-reconciler fixes every ~60s) or recreate `monsoon-app` |
+| `"status": "ok"` + `current_urls` contains `127.0.0.1:8080` | Webhook wired — check app logs for `sendText` errors |
+| `"status": "misconfigured"` + old `app` / `monsoon-app` URL | Wait ~60s (reconciler) or recreate `monsoon-app` |
 | `session_not_found` | `WAHA_SESSION` mismatch — must match dashboard session (`prakalp`) |
 
 `WAHA_SESSION=default` while dashboard shows `prakalp` breaks **outbound** replies even if
@@ -135,15 +142,15 @@ inbound webhooks work.
 Verify after redeploy:
 
 ```bash
-docker exec monsoon-waha curl -sS http://monsoon-app:8080/health/live
-curl -sS -H "X-Api-Key: YOUR_KEY" http://127.0.0.1:13000/api/sessions/prakalp | grep monsoon-app
+docker exec monsoon-waha curl -sS http://127.0.0.1:8080/health/live
+curl -sS -H "X-Api-Key: YOUR_KEY" http://127.0.0.1:13000/api/sessions/prakalp | grep 127.0.0.1
 docker logs monsoon-app --tail 20 | grep -i webhook
 ```
 
 ### Manual override (optional)
 
 Set `MONSOON_AUTO_WEBHOOK=false` and use `infra/scripts/configure_waha_webhook.py` with
-`--webhook-url http://monsoon-app:8080/api/webhooks/waha`.
+`--webhook-url http://127.0.0.1:8080/api/webhooks/waha`.
 
 ---
 
