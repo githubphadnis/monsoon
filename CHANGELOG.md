@@ -9,7 +9,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- Portainer networking: WAHA uses `network_mode: service:app` — webhooks via `127.0.0.1:8080` (no Docker DNS).
+- App crash on startup: map `postgresql://` to `postgresql+psycopg://` (requirements use psycopg v3, not psycopg2).
+- CI/docker-publish: smoke-import app and built image to catch driver mismatches before deploy.
 - `/health/webhook` — shows current vs expected webhook URL and session status.
 - Self-chat reply: fall back to `me.id` when `remoteJidAlt` missing on `@lid` messages.
 - WAHA `sendText` failures now log HTTP status + response body.

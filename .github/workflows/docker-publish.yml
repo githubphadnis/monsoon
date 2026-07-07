@@ -30,6 +30,11 @@ jobs:
       - name: Test
         run: pytest tests/ -q
 
+      - name: Smoke import app (DB driver)
+        env:
+          DATABASE_URL: postgresql://monsoon:monsoon@postgres:5432/monsoon
+        run: python -c "from app.main import app"
+
   build-and-push:
     needs: test
     runs-on: ubuntu-latest
@@ -63,3 +68,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Smoke test built image
+        run: |
+          docker run --rm -e DATABASE_URL=postgresql://monsoon:monsoon@postgres:5432/monsoon \
+            ${{ env.IMAGE_NAME }}:main python -c "from app.main import app"

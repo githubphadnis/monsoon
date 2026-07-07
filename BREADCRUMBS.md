@@ -4,15 +4,15 @@
 
 ## Next action (start here)
 
-1. GitHub Actions green → Portainer **Pull and redeploy** (full stack — WAHA `network_mode` changed).
-2. Verify: `docker exec monsoon-waha curl -sS http://127.0.0.1:8080/health/live`
-3. WhatsApp: `todo test monsoon reply`
+1. GitHub Actions green → Portainer **Pull and redeploy**.
+2. `docker logs monsoon-app --tail 10` — should show Uvicorn running, not psycopg2 traceback.
+3. `docker exec monsoon-waha curl -sS http://127.0.0.1:8080/health/live`
 
 ## Session summary
 
-- Docker DNS between waha and app broken on notcoolio (`monsoon-app` unresolved).
-- Fix: WAHA `network_mode: service:app` — localhost sidecar, no Cloudflare.
+- App crash: `postgresql://` URL used psycopg2 driver but image has psycopg v3 only.
+- Fixed `db.py` URL normalization + CI smoke import on built Docker image.
 
 ## Branch / state
 
-- `main` — sidecar networking pushed; pending redeploy on notcoolio.
+- `main` — pending push/deploy with psycopg fix.

@@ -28,3 +28,8 @@ jobs:
 
       - name: Test
         run: pytest tests/ -q
+
+      - name: Smoke import app (DB driver)
+        env:
+          DATABASE_URL: postgresql://monsoon:monsoon@postgres:5432/monsoon
+        run: python -c "from app.main import app"
