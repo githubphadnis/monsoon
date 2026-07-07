@@ -9,6 +9,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Portainer deploy: WAHA webhook auto-configured on app startup (`http://monsoon-app:8080`).
+- Docker DNS: fixed `container_name` (`monsoon-app`, `monsoon-waha`) and network `monsoon`.
 - Self-chat capture: resolve `@lid` sender via `me.id` so allowed-number check passes.
 - Webhook subscribes to `message.any` (required for Message-yourself on WAHA NOWEB).
 - Webhook script sends `X-Api-Key` header to monsoon.

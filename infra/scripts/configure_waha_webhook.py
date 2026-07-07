@@ -2,8 +2,6 @@
 
 Usage (on host with WAHA running):
   python infra/scripts/configure_waha_webhook.py --webhook-url http://monsoon-app:8080/api/webhooks/waha
-
-For notcoolio with tunnel:
   --webhook-url https://your-public-url/api/webhooks/waha
 """
 

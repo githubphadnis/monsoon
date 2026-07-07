@@ -95,93 +95,35 @@ docker logs "$(docker ps -q --filter name=waha | head -1)" --tail 80
 
 ---
 
-## 4. Wire WAHA webhook → monsoon app
+## 4. WAHA webhook → monsoon app (automatic)
 
-Your session **name** in the dashboard (e.g. `prakalp`) must match **`WAHA_SESSION`** in
-Portainer on the `app` service.
+On startup the **app container** configures WAHA automatically:
 
-### Option A — curl on notcoolio (easiest)
+- Webhook URL: `http://monsoon-app:8080/api/webhooks/waha` (Docker DNS via `container_name`)
+- Events: `message`, `message.any`
+- Header: `X-Api-Key` = your `WAHA_API_KEY`
 
-**Verify WAHA can reach the app** (must return `{"status":"ok"}`):
+**You do not need manual `curl` webhook setup** after Portainer pull & redeploy.
 
-```bash
-docker exec monsoon-waha curl -sS -m 5 http://monsoon-app:8080/health/live
-```
+Requirements:
 
-If you see `Could not resolve host: app` — the webhook URL must **not** use `http://app:8080`.
-Use the app container IP instead:
+1. `WAHA_SESSION` in Portainer must match your paired session name (e.g. `prakalp`).
+2. WAHA session must be **WORKING** (paired). If app starts before pairing, redeploy the
+   `app` container once after QR scan.
+3. Stack uses fixed container names (`monsoon-app`, `monsoon-waha`) on network `monsoon`.
 
-```bash
-APP_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' monsoon-app)
-echo "App IP: $APP_IP"
-
-curl -sS -X PUT "http://127.0.0.1:13000/api/sessions/prakalp" \
-  -H "Content-Type: application/json" \
-  -H "X-Api-Key: YOUR_WAHA_API_KEY" \
-  -d "{
-    \"config\": {
-      \"webhooks\": [{
-        \"url\": \"http://${APP_IP}:8080/api/webhooks/waha\",
-        \"events\": [\"message\", \"message.any\"],
-        \"customHeaders\": [
-          {\"name\": \"X-Api-Key\", \"value\": \"YOUR_WAHA_API_KEY\"}
-        ]
-      }]
-    }
-  }"
-```
-
-If DNS works (`monsoon-app` resolves), use `http://monsoon-app:8080/api/webhooks/waha` instead of the IP.
-
-Legacy one-liner (only if `app` resolves inside `monsoon-waha`):
+Verify after redeploy:
 
 ```bash
-curl -sS -X PUT "http://127.0.0.1:13000/api/sessions/prakalp" \
-  -H "Content-Type: application/json" \
-  -H "X-Api-Key: YOUR_WAHA_API_KEY" \
-  -d '{
-    "config": {
-      "webhooks": [{
-        "url": "http://app:8080/api/webhooks/waha",
-        "events": ["message", "message.any"],
-        "customHeaders": [
-          {"name": "X-Api-Key", "value": "YOUR_WAHA_API_KEY"}
-        ]
-      }]
-    }
-  }'
+docker exec monsoon-waha curl -sS http://monsoon-app:8080/health/live
+curl -sS -H "X-Api-Key: YOUR_KEY" http://127.0.0.1:13000/api/sessions/prakalp | grep monsoon-app
+docker logs monsoon-app --tail 20 | grep -i webhook
 ```
 
-`http://app:8080` is the Docker hostname — reachable from the WAHA container, not from your PC.
+### Manual override (optional)
 
-### Option B — Python script (from a machine with the repo)
-
-```bash
-export WAHA_BASE_URL=http://127.0.0.1:13000
-export WAHA_API_KEY=<your-key>
-export WAHA_SESSION=prakalp
-
-python infra/scripts/configure_waha_webhook.py \
-  --webhook-url http://app:8080/api/webhooks/waha
-```
-
-### Option C — WAHA dashboard
-
-Session row → **gear** → **Webhooks** → add:
-
-- URL: `http://app:8080/api/webhooks/waha`
-- Events: `message`
-- Custom header: `X-Api-Key` = same as `WAHA_API_KEY`
-
-### Portainer env (app container)
-
-```text
-WAHA_SESSION=prakalp
-ALLOWED_WHATSAPP_NUMBERS=918291882204
-MONSOON_ALLOW_SELF_CHAT=true
-```
-
-Recreate the `app` container after changing env vars.
+Set `MONSOON_AUTO_WEBHOOK=false` and use `infra/scripts/configure_waha_webhook.py` with
+`--webhook-url http://monsoon-app:8080/api/webhooks/waha`.
 
 ---
 

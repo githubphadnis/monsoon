@@ -6,6 +6,7 @@ APP_TIMEZONE=Europe/Amsterdam
 APP_LOG_LEVEL=INFO
 ALLOWED_WHATSAPP_NUMBERS=918291882204
 MONSOON_ALLOW_SELF_CHAT=true
+MONSOON_AUTO_WEBHOOK=true
 
 # --- Postgres (REQUIRED: POSTGRES_PASSWORD) ---
 POSTGRES_USER=monsoon
@@ -20,13 +21,12 @@ WORKFLOWY_ROOT_NODE_ID=
 
 # --- WAHA — dedicated monsoon instance (REQUIRED: WAHA_API_KEY, WAHA_DASHBOARD_PASSWORD, WHATSAPP_SWAGGER_PASSWORD) ---
 WAHA_API_KEY=
-# Session name must be "default" on WAHA Core (free image)
-WAHA_SESSION=default
+WAHA_SESSION=prakalp
 WAHA_DASHBOARD_USERNAME=admin
 WAHA_DASHBOARD_PASSWORD=
 WHATSAPP_SWAGGER_USERNAME=admin
 WHATSAPP_SWAGGER_PASSWORD=
-# WAHA_BASE_URL is fixed in compose: http://waha:3000 (do not set to localhost)
+# WAHA_BASE_URL / webhook URL are fixed in compose (monsoon-waha, monsoon-app)
 
 # --- Ollama on lenai ---
 OLLAMA_BASE_URL=http://lenai:11434

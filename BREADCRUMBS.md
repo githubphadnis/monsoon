@@ -4,15 +4,14 @@
 
 ## Next action (start here)
 
-1. Wait for GitHub Actions → GHCR publish green, then Portainer **Pull and redeploy** `app`.
-2. Re-run webhook curl with `message` + `message.any` (see `docs/deploy-portainer.md` §4).
+1. Wait for GitHub Actions green → Portainer **Pull and redeploy** `monsoon` stack.
+2. Confirm `docker logs monsoon-app | grep "WAHA webhook configured"`.
 3. WhatsApp test: `todo test monsoon reply`.
 
 ## Session summary
 
-- Portainer deploy **OK**; Postgres **OK**; WAHA dashboard blocked by **localhost-only bind** (`127.0.0.1:13000`).
+- Root cause: WAHA could not resolve hostname `app` — fixed with `container_name` + auto webhook on app startup.
 
 ## Branch / state
 
-- Remote: `main` on GitHub; GHCR image published.
-- notcoolio: stack deployed (user confirmed).
+- `main` — auto webhook + network `monsoon` + containers `monsoon-app` / `monsoon-waha`.

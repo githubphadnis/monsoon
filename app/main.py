@@ -10,6 +10,7 @@ from app.config import get_settings
 from app.db import init_db
 from app.integrations.ollama.client import OllamaClient
 from app.integrations.whatsapp.waha_client import WahaClient
+from app.integrations.whatsapp.webhook_setup import ensure_waha_webhook
 
 settings = get_settings()
 logging.basicConfig(level=getattr(logging, settings.app_log_level.upper(), logging.INFO))
@@ -20,6 +21,7 @@ logger = logging.getLogger("monsoon")
 async def lifespan(_: FastAPI):
     logger.info("Initialising database schema")
     init_db()
+    await ensure_waha_webhook(settings)
     yield
 
 

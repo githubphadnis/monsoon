@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     waha_session: str = "default"
     waha_webhook_path: str = "/api/webhooks/waha"
 
+    monsoon_auto_webhook: bool = True
+    monsoon_webhook_target_url: str = "http://monsoon-app:8080/api/webhooks/waha"
+
     allowed_whatsapp_numbers: str = ""
     monsoon_allow_self_chat: bool = True
 
