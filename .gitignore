@@ -31,7 +31,10 @@ desktop.ini
 *.swo
 *~
 
-# Build / logs
+# Local test artifacts
+test_webhook.db
+*.sqlite3
+
 dist/
 build/
 *.log
