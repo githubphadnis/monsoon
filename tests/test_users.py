@@ -33,3 +33,13 @@ def test_resolve_sender_phone_rejects_unknown():
         settings=settings,
     )
     assert phone is None
+
+
+def test_resolve_reply_chat_id_lid_to_cus():
+    from app.services.sender_identity import resolve_reply_chat_id
+
+    chat = resolve_reply_chat_id(
+        "29304595423273@lid",
+        {"_data": {"key": {"remoteJidAlt": "918291882204@s.whatsapp.net"}}},
+    )
+    assert chat == "918291882204@c.us"

@@ -9,7 +9,7 @@ from app.config import Settings, get_settings
 from app.db import get_db
 from app.schemas.waha import WahaMessagePayload, WahaWebhookEvent
 from app.services.capture_service import CaptureService
-from app.services.sender_identity import resolve_sender_phone
+from app.services.sender_identity import resolve_reply_chat_id, resolve_sender_phone
 
 logger = logging.getLogger("monsoon.api.webhooks")
 
@@ -23,6 +23,7 @@ def _verify_webhook_key(
     if not settings.waha_api_key:
         return
     if x_api_key != settings.waha_api_key:
+        logger.warning("Webhook rejected: missing or invalid X-Api-Key")
         raise HTTPException(status_code=401, detail="Invalid webhook API key")
 
 
@@ -35,6 +36,11 @@ async def waha_webhook(
 ) -> dict[str, str]:
     body = await request.json()
     event = WahaWebhookEvent.model_validate(body)
+    logger.info(
+        "Webhook received event=%s session=%s",
+        event.event,
+        event.session,
+    )
 
     if event.event not in {"message", "message.any"}:
         return {"status": "ignored", "reason": "event"}
@@ -67,17 +73,18 @@ async def waha_webhook(
         logger.warning("Rejected sender %s (from_me=%s)", sender, payload.from_me)
         raise HTTPException(status_code=403, detail="Sender not allowed")
 
-    chat_id = sender
-
+    chat_id = resolve_reply_chat_id(sender, payload_extra)
+    logger.info("Processing capture from=%s chat_id=%s phone=%s", sender, chat_id, phone)
     service = CaptureService(db, settings)
     try:
-        await service.handle_text(
+        reply = await service.handle_text(
             source_message_id=payload.id,
             chat_id=chat_id,
             sender_phone=phone,
             text=text,
             raw_payload=body,
         )
+        logger.info("Webhook processed reply_sent=%s", bool(reply))
     except Exception:
         logger.exception("Webhook processing failed")
         return {"status": "error"}

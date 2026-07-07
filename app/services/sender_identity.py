@@ -44,3 +44,19 @@ def resolve_sender_phone(
         if is_allowed_sender(phone, settings):
             return phone
     return None
+
+
+def resolve_reply_chat_id(from_id: str, payload_extra: dict[str, Any] | None) -> str:
+    """Prefer @c.us JID for replies when self-chat uses @lid."""
+    if not from_id.endswith("@lid"):
+        return from_id
+
+    extra = payload_extra or {}
+    data = extra.get("_data") if isinstance(extra.get("_data"), dict) else {}
+    key = data.get("key") if isinstance(data.get("key"), dict) else {}
+    alt = key.get("remoteJidAlt")
+    if isinstance(alt, str) and alt:
+        if alt.endswith("@s.whatsapp.net"):
+            return f"{phone_from_chat_id(alt)}@c.us"
+        return alt
+    return from_id

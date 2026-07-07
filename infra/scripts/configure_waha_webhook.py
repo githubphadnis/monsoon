@@ -53,6 +53,17 @@ def main() -> int:
             )
         response.raise_for_status()
         print(json.dumps(response.json(), indent=2))
+
+    with httpx.Client(timeout=30.0) as client:
+        check = client.get(
+            f"{args.waha_url.rstrip('/')}/api/sessions/{args.session}",
+            headers=headers,
+        )
+        check.raise_for_status()
+        webhooks = check.json().get("config", {}).get("webhooks", [])
+        print(f"\nSession {args.session!r} webhooks configured: {len(webhooks)}")
+        for hook in webhooks:
+            print(f"  - {hook.get('url')} events={hook.get('events')}")
     return 0
 
 

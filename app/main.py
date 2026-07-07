@@ -38,6 +38,21 @@ def health_live() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/health/db")
+def health_db() -> dict[str, object]:
+    from sqlalchemy import text
+
+    from app.db import engine
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"status": "ok"}
+    except Exception as exc:
+        logger.exception("Database health check failed")
+        return {"status": "error", "detail": str(exc)}
+
+
 @app.get("/health/ready")
 async def health_ready() -> dict[str, object]:
     waha = WahaClient(settings)

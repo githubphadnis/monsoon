@@ -56,7 +56,9 @@ services:
       retries: 3
       start_period: 20s
     networks:
-      - monsoon
+      monsoon:
+        aliases:
+          - monsoon-app
 
   waha:
     image: devlikeapro/waha:latest
