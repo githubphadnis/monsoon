@@ -15,7 +15,7 @@ capture & reminder system (WorkFlowy + WhatsApp via WAHA + local Postgres).
 
 - **V1 scope:** Personal Capture & Reminder only — not a full assistant platform.
 - **Source of truth:** local Postgres (tasks, reminders, sync state, audit).
-- **WorkFlowy:** mirrored human-facing outline (push sync from app; no reverse sync in v1).
+- **WorkFlowy:** visual fractal outline — task node + context children; push sync from app; reverse read in v1.2 (`docs/workflowy-mirror.md`).
 - **WhatsApp:** WAHA webhook in, WAHA HTTP API out (capture + confirmations + reminders).
 - **Deploy target:** `notcoolio` (mini Lenovo) via Docker Compose / Portainer.
 - **Ollama (lenai):** core — parse, classify, digest, and proactive replies; command

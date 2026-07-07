@@ -16,7 +16,7 @@ Single operator (Prakalp) — personal productivity, not multi-tenant SaaS.
 
 - Low-friction capture where messages already arrive (WhatsApp).
 - Durable local state without depending on a brittle all-in-one assistant platform.
-- Human-readable task tree in WorkFlowy.
+- Human-readable **fractal** task tree in WorkFlowy (task = node, context = children)
 - Predictable reminders and daily digests.
 
 ## V1 scope (initial boundary)
@@ -29,7 +29,7 @@ Single operator (Prakalp) — personal productivity, not multi-tenant SaaS.
 - Command grammar (`todo`, `done`, `list`, `snooze`, `digest`, `help`) with LLM
   fallback for free-text capture
 - Local Postgres as canonical store (tasks, inbound/outbound messages, sync state)
-- WorkFlowy push sync (create/update/complete bullets in fixed folder structure)
+- WorkFlowy push sync — task todo nodes + context as child bullets (see `docs/workflowy-mirror.md`)
 - Reminder scheduler (due/remind_at → WhatsApp outbound)
 - Morning digest (scheduled + `digest now`)
 - Health endpoints and structured logging

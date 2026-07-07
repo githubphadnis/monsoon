@@ -58,11 +58,15 @@ See [`docs/context-atlas.md`](./docs/context-atlas.md) for the layer model.
 
 ## V1.0 carry-over (reordered)
 
-### WorkFlowy mirror
+### WorkFlowy mirror (fractal context)
 
-- Create/update bullets via WorkFlowy API
-- `workflowy_node_id` on tasks
-- `done <id>` → complete + sync
+See [`docs/workflowy-mirror.md`](./workflowy-mirror.md).
+
+- Task = todo node under bucket; `workflowy_node_id` on `tasks`
+- System children: `id: T{n}`, `source`, `due`, `status`
+- **Follow-ups / context** = child bullets under task node (human + monsoon)
+- `task_context_items` table + push on `note 18 …` / linked captures
+- v1.2: reverse sync WF children → Postgres for LLM context slice
 
 ### Reminders
 
