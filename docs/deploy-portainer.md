@@ -91,6 +91,7 @@ docker logs "$(docker ps -q --filter name=waha | head -1)" --tail 80
 | 404 on `/` | Normal — use **`/dashboard`** |
 | Login fails | Check `WAHA_DASHBOARD_PASSWORD` in Portainer env |
 | Container restarting | Check logs; confirm `WAHA_DASHBOARD_PASSWORD` and `WHATSAPP_SWAGGER_PASSWORD` are set |
+| `EAI_AGAIN web.whatsapp.com` in WAHA logs | Container DNS — compose sets `127.0.0.11` + `1.1.1.1`; test below |
 | 422 — only `default` session | **WAHA Core** (free) — use session name **`default`**, not `monsoon` / `prakalp`; set `WAHA_SESSION=default` in Portainer |
 
 ---

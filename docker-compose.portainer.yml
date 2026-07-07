@@ -73,6 +73,11 @@ services:
       start_period: 20s
     networks:
       - monsoon
+    # WAHA shares this network namespace — must resolve web.whatsapp.com for pairing
+    dns:
+      - 127.0.0.11
+      - 1.1.1.1
+      - 8.8.8.8
 
   waha:
     container_name: monsoon-waha
