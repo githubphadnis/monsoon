@@ -9,6 +9,10 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- WAHA `list_chats`: use `sortBy=conversationTimestamp` (was invalid `messageTimestamp` → 400).
+- Auto-enable NOWEB `store` on WAHA session config for chat/message history APIs.
+- Empty `GMAIL_SYNC_MAX_PAGES` env no longer crashes app startup (treat as unset).
+- Container DNS on `app` service for WAHA WhatsApp connectivity (`EAI_AGAIN web.whatsapp.com`).
 - Parser keyword aliases: `to do`/`to-do`, `remind me to`, `complete`/`finish`, `show`/`tasks`, `summary`, `?`.
 - Commit outbound message immediately after send so echo webhooks see sent state.
 - CI/docker-publish: smoke-import app and built image to catch driver mismatches before deploy.

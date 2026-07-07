@@ -12,7 +12,8 @@ See [`docs/context-atlas.md`](./docs/context-atlas.md) for the layer model.
 - [x] Phase 1 — WAHA webhook capture, Postgres tasks, replies
 - [x] Self-chat loop guard, keyword aliases, Portainer sidecar networking
 - [x] psycopg3 driver fix + CI smoke tests
-- [x] Deploy on notcoolio (operator validating)
+- [x] Deploy on notcoolio — sidecar networking, session `prakalp`, capture validated
+- [x] Deploy fixes: DNS, psycopg3, empty Gmail env, backfill API params, NOWEB store
 
 ---
 
@@ -20,12 +21,12 @@ See [`docs/context-atlas.md`](./docs/context-atlas.md) for the layer model.
 
 - [x] `infra/scripts/cleanup_loop_tasks.py` (dry-run / apply)
 - [x] `infra/scripts/cleanup_postgres.sql`
-- [ ] Operator runs cleanup on notcoolio after loop incident
+- [ ] Operator runs cleanup on notcoolio after loop incident (if needed)
 - [ ] Confirm sane task list for daily use
 
 ---
 
-## Priority 2 — Gmail ingestion
+## Priority 2 — Gmail ingestion (after WA pilot)
 
 - [x] Tables: `email_threads`, `email_messages`, `email_participants`
 - [x] `app/integrations/gmail/` — client, parse, sync service
@@ -43,7 +44,9 @@ See [`docs/context-atlas.md`](./docs/context-atlas.md) for the layer model.
 - [x] WAHA client: list chats, paginate messages
 - [x] `infra/scripts/wa_backfill.py` + `/health/wa-index`
 - [x] Regex entity extract (phone, email, url)
-- [ ] Operator full backfill on notcoolio
+- [x] NOWEB store + correct chat sort params (deploy fix)
+- [ ] Operator pilot: `--max-chats 5` on notcoolio (after redeploy)
+- [ ] Volume hardening before `--full` (batch commits, caps, skip groups)
 - [ ] Ollama 5W1H batch extract (phase 3b)
 - [ ] Nightly delta sync job
 

@@ -37,12 +37,16 @@ Single operator (Prakalp) — personal productivity, not multi-tenant SaaS.
 
 ### Explicitly excluded (deferred)
 
-- Email / Gmail ingestion — v1.1+
 - Reverse sync from WorkFlowy edits — v1.2+
 - Rich web UI — v1.2+ (admin/status only in v1)
 - Multi-user / RBAC — out of scope
 - OpenLoomi replacement / unified assistant — separate effort
 - Full autonomous agent with tool-use loops — defer; monsoon suggests and nudges first
+
+### In progress (context atlas — beyond original V1 boundary)
+
+- Gmail ingestion (code shipped; operator OAuth + sync pending) — `docs/gmail-ingestion.md`
+- WhatsApp full history index (pilot on notcoolio) — `docs/whatsapp-backfill.md`
 
 ## Success criteria (V1)
 
@@ -61,6 +65,7 @@ Single operator (Prakalp) — personal productivity, not multi-tenant SaaS.
 | WAHA | WhatsApp HTTP API | [WAHA docs](https://waha.devlike.pro/) |
 | Postgres | Canonical state | — |
 | Ollama (lenai) | Parse, enrich, digest, nudges | `docs/llm-integration.md` |
+| Gmail (optional) | Email index for context atlas | `docs/gmail-ingestion.md` |
 
 ## Getting started
 

@@ -8,6 +8,8 @@
 | 2026-07-07 | WAHA for WhatsApp | Self-hosted HTTP API + webhooks; fits Docker on notcoolio |
 | 2026-07-07 | Deterministic command grammar in v1 | Reliable capture before optional Ollama NL parsing |
 | 2026-07-07 | Ollama as core LLM layer (lenai) | Parse, classify, digest, and nudges; borrow OpenLoomi insight/soul patterns at smaller scope |
+| 2026-07-07 | WAHA sidecar networking | `network_mode: service:app` — webhooks/API via `127.0.0.1`; avoids Docker DNS between WAHA and app |
+| 2026-07-07 | NOWEB store required for history APIs | `/chats` and `/messages` need `config.noweb.store.enabled`; monsoon sets on session PUT at startup |
 | 2026-07-07 | Context atlas north star | Tasks are one lens; Gmail + full WA index — see `docs/context-atlas.md` |
 | 2026-07-07 | WorkFlowy fractal context | Task node = todo; follow-ups are child bullets — see `docs/workflowy-mirror.md` |
 
@@ -66,19 +68,28 @@ same task node — see `docs/workflowy-mirror.md`.
 - `task_context_items` — follow-up content (mirrored as WF child bullets)
 - `outbound_messages` — delivery audit
 
-**Planned (context atlas)**
+**Shipped (context atlas)**
 
-- `email_threads`, `email_messages`, `email_participants`
+- `email_threads`, `email_messages`, `email_participants` — Gmail sync
 - `wa_chats`, `wa_messages`, `wa_contacts`
-- `extracted_entities` — 5W1H / phones / facts from messages
+- `extracted_entities` — regex phones/emails/URLs (LLM 5W1H later)
+- `sync_state` — reserved for global cursors
+
+**Planned**
+
+- `task_context_items` — follow-up content (mirrored as WF child bullets)
 - `contacts` — unified people across WA + email
-- `sync_state` — cursors for Gmail + WA backfill + WorkFlowy
 
 ## Errors faced & solutions
 
 | Date | Error | Solution |
 |------|-------|----------|
-| — | — | — |
+| 2026-07-07 | WAHA webhook to `app:8080` — no reply | Sidecar `127.0.0.1`; reconciler + `MONSOON_WEBHOOK_TARGET_URL` |
+| 2026-07-07 | `ModuleNotFoundError: psycopg2` | Normalize `DATABASE_URL` to `postgresql+psycopg://` |
+| 2026-07-07 | Self-chat bot reply loop | `outbound_guard.py` + commit outbound before echo |
+| 2026-07-07 | `EAI_AGAIN web.whatsapp.com` | Explicit DNS on `app` in compose (`127.0.0.11`, `1.1.1.1`, `8.8.8.8`) |
+| 2026-07-07 | `gmail_sync_max_pages` validation on `''` | Pydantic coerces empty string → `None` |
+| 2026-07-07 | `list_chats` 400 Bad Request | `sortBy=conversationTimestamp` (not `messageTimestamp`); enable NOWEB store |
 
 ## Patterns to avoid
 

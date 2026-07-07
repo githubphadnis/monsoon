@@ -16,7 +16,9 @@ capture & reminder system (WorkFlowy + WhatsApp via WAHA + local Postgres).
 - **V1 scope:** Personal Capture & Reminder only — not a full assistant platform.
 - **Source of truth:** local Postgres (tasks, reminders, sync state, audit).
 - **WorkFlowy:** visual fractal outline — task node + context children; push sync from app; reverse read in v1.2 (`docs/workflowy-mirror.md`).
-- **WhatsApp:** WAHA webhook in, WAHA HTTP API out (capture + confirmations + reminders).
+- **WhatsApp:** WAHA webhook in, WAHA HTTP API out; session name must match Portainer `WAHA_SESSION` (e.g. `prakalp`).
+- **WAHA networking:** sidecar — WAHA shares app network; all internal URLs use `127.0.0.1`.
+- **WA history:** NOWEB store must be enabled on session for `/chats` and `/messages` backfill.
 - **Deploy target:** `notcoolio` (mini Lenovo) via Docker Compose / Portainer.
 - **Ollama (lenai):** core — parse, classify, digest, and proactive replies; command
   grammar is the fallback when LLM is down. See `docs/llm-integration.md`.
@@ -32,8 +34,11 @@ docker compose up -d
 | URL / check | Purpose |
 |-------------|---------|
 | `GET /health/live` | Process up |
-| `GET /health/ready` | DB + integrations reachable |
-| WAHA dashboard | `http://127.0.0.1:13000/dashboard` via `ssh -L 13000:127.0.0.1:13000 prakalp@notcoolio` — **dedicated monsoon WAHA** |
+| `GET /health/db` | Postgres reachable |
+| `GET /health/webhook` | WAHA webhook + NOWEB store status |
+| `GET /health/wa-index` | WA backfill index counts |
+| `GET /health/gmail-index` | Gmail sync counts (if configured) |
+| WAHA dashboard | `http://127.0.0.1:13000/dashboard` via SSH tunnel — **dedicated monsoon WAHA** |
 | Capture | **WhatsApp** → Message yourself or paired number |
 
 ## Deploy
@@ -49,6 +54,8 @@ docker compose up -d
 - `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `MONSOON_SOUL_PROMPT`
 - `APP_TIMEZONE` (e.g. `Europe/Amsterdam`)
 - `ALLOWED_WHATSAPP_NUMBERS` (comma-separated E.164 without `+`)
+- `WAHA_SESSION` — must match paired session in WAHA dashboard (e.g. `prakalp`)
+- Gmail (optional): `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` — omit `GMAIL_SYNC_MAX_PAGES` until pilot
 
 ## Session contract
 

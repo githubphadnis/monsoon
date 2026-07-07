@@ -45,9 +45,8 @@ GitHub → Packages → `monsoon` → Package settings → Change visibility →
 
 `DATABASE_URL`, `APP_HOST`, `APP_PORT`, `WAHA_WEBHOOK_PATH`, cron vars are **not** used by `docker-compose.portainer.yml` (safe to omit).
 
-Set `WAHA_SESSION=default` — **WAHA Core** (free image) only allows the session name
-`default`. Use a **dedicated monsoon WAHA container** (port 13000) to avoid clashing with
-other stacks; the session name is still `default`.
+Set `WAHA_SESSION=prakalp` (or whatever name you pair in the dashboard). Compose default is `prakalp`.
+If WAHA Core rejects custom session names, use `default` and set `WAHA_SESSION=default` to match.
 
 7. **Deploy the stack**.
 
@@ -70,7 +69,7 @@ Then in your browser:
 1. Open **`http://127.0.0.1:13000/dashboard`** (port **13000**, path **`/dashboard`**).
 2. Log in with `WAHA_DASHBOARD_USERNAME` / `WAHA_DASHBOARD_PASSWORD` (default user: `admin`).
 3. When prompted, enter **`WAHA_API_KEY`** (same value as in Portainer stack env).
-4. Start session **`default`** only (WAHA Core does not allow custom session names like `monsoon`).
+4. Start session **`prakalp`** (must match `WAHA_SESSION` in Portainer).
 5. Scan QR / pair — this WAHA instance is **only** for monsoon, not other projects.
 
 ### Dashboard won't load?
@@ -91,8 +90,10 @@ docker logs "$(docker ps -q --filter name=waha | head -1)" --tail 80
 | 404 on `/` | Normal — use **`/dashboard`** |
 | Login fails | Check `WAHA_DASHBOARD_PASSWORD` in Portainer env |
 | Container restarting | Check logs; confirm `WAHA_DASHBOARD_PASSWORD` and `WHATSAPP_SWAGGER_PASSWORD` are set |
-| `EAI_AGAIN web.whatsapp.com` in WAHA logs | Container DNS — compose sets `127.0.0.11` + `1.1.1.1`; test below |
-| 422 — only `default` session | **WAHA Core** (free) — use session name **`default`**, not `monsoon` / `prakalp`; set `WAHA_SESSION=default` in Portainer |
+| `EAI_AGAIN web.whatsapp.com` in WAHA logs | Container DNS — compose sets `127.0.0.11` + `1.1.1.1`; test host DNS |
+| `list_chats` 400 on backfill | Redeploy latest `main` — fixed `sortBy` + NOWEB store auto-config |
+| App crash `gmail_sync_max_pages` | Omit `GMAIL_SYNC_MAX_PAGES` in Portainer or redeploy latest `main` |
+| 422 — only `default` session | **WAHA Core** tier — try `WAHA_SESSION=default` or upgrade tier |
 
 ---
 
@@ -108,6 +109,7 @@ On startup the **app container** configures WAHA automatically:
 - Webhook URL: `http://127.0.0.1:8080/api/webhooks/waha`
 - Events: `message`, `message.any`
 - Header: `X-Api-Key` = your `WAHA_API_KEY`
+- NOWEB store: `config.noweb.store.enabled=true` (required for chat/message history backfill)
 - App → WAHA: `http://127.0.0.1:3000` (WAHA port published via app as host **13000**)
 
 **You do not need manual `curl` webhook setup** after Portainer pull & redeploy.
@@ -133,6 +135,7 @@ docker logs monsoon-app --tail 50 | grep -E 'Webhook received|sendText|webhook'
 
 | `health/webhook` | Meaning |
 |------------------|---------|
+| `"status": "ok"` + `noweb_store_enabled: true` | Webhook + NOWEB store ready for backfill |
 | `"status": "ok"` + `current_urls` contains `127.0.0.1:8080` | Webhook wired — check app logs for `sendText` errors |
 | `"status": "misconfigured"` + old `app` / `monsoon-app` URL | Wait ~60s (reconciler) or recreate `monsoon-app` |
 | `session_not_found` | `WAHA_SESSION` mismatch — must match dashboard session (`prakalp`) |
@@ -187,7 +190,9 @@ Postgres and WAHA volumes persist across redeploys.
 
 ```bash
 curl -s http://127.0.0.1:8080/health/live
-curl -s http://127.0.0.1:8080/health/ready
+curl -s http://127.0.0.1:8080/health/db
+curl -s http://127.0.0.1:8080/health/webhook
+curl -s http://127.0.0.1:8080/health/wa-index
 ```
 
 ---
