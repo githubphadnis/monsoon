@@ -49,7 +49,7 @@ services:
       WAHA_API_KEY: ${WAHA_API_KEY:?Set WAHA_API_KEY in .env}
       WHATSAPP_DEFAULT_ENGINE: NOWEB
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:13000:3000"
     volumes:
       - monsoon_waha_sessions:/app/.sessions
     networks:

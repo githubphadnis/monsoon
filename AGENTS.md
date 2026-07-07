@@ -33,7 +33,15 @@ docker compose up -d
 |-------------|---------|
 | `GET /health/live` | Process up |
 | `GET /health/ready` | DB + integrations reachable |
-| WAHA dashboard | WhatsApp session (localhost only by default) |
+| WAHA dashboard | `http://notcoolio:13000/dashboard` — **dedicated monsoon WAHA** |
+| Capture | **WhatsApp** → Message yourself or paired number |
+
+## Deploy
+
+**Production:** GitHub Actions → `ghcr.io/githubphadnis/monsoon:main` → Portainer stack
+(`docker-compose.portainer.yml`). See `docs/deploy-portainer.md`.
+
+**Local dev:** `docker compose up --build` (repo root `docker-compose.yml`).
 
 ## Env essentials
 

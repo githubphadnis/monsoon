@@ -8,7 +8,8 @@
 
 - Repo bootstrapped at `C:\projects\monsoon` with cOcO baseline docs.
 - GitHub remote: https://github.com/githubphadnis/monsoon (LICENSE only on remote before first push).
-- Application: **Phase 1 implemented** — WAHA webhook, task capture, Ollama fallback parse, WhatsApp replies.
+- Deploy model: **GitHub Actions → GHCR → Portainer** (`docs/deploy-portainer.md`).
+- Dedicated **monsoon WAHA** on host port **13000** — not shared with Moneypenny.
 - Not yet deployed on notcoolio.
 
 ## Broken things

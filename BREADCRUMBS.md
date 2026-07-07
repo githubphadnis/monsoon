@@ -4,9 +4,9 @@
 
 ## Next action (start here)
 
-1. Deploy on **notcoolio**: `docker compose up -d --build`
-2. Configure WAHA webhook → monsoon (`infra/scripts/configure_waha_webhook.py`)
-3. Send WhatsApp `todo test from monsoon` and confirm reply + Postgres row.
+1. Merge/push triggers GHCR publish — confirm Actions green on GitHub.
+2. Portainer on notcoolio: stack from `docker-compose.portainer.yml` (see `docs/deploy-portainer.md`).
+3. Pair **dedicated** monsoon WAHA (`:13000`, session `monsoon`); send test on **WhatsApp**.
 
 ## Session summary
 

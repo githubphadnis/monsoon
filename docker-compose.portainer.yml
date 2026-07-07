@@ -1,0 +1,85 @@
+# Portainer stack for notcoolio — pull images from GHCR (no local build).
+#
+# In Portainer: Stacks → Add stack → Git repository
+#   Repository: https://github.com/githubphadnis/monsoon
+#   Compose path: docker-compose.portainer.yml
+#   Branch: main
+#
+# Set stack environment variables in Portainer (see docs/deploy-portainer.md).
+# Dedicated monsoon WAHA — do not reuse Moneypenny or other WAHA instances.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-monsoon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-monsoon}
+    volumes:
+      - monsoon_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-monsoon} -d ${POSTGRES_DB:-monsoon}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - monsoon
+
+  app:
+    image: ghcr.io/githubphadnis/monsoon:main
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-monsoon}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-monsoon}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Amsterdam}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+      ALLOWED_WHATSAPP_NUMBERS: ${ALLOWED_WHATSAPP_NUMBERS:?Set ALLOWED_WHATSAPP_NUMBERS}
+      MONSOON_ALLOW_SELF_CHAT: ${MONSOON_ALLOW_SELF_CHAT:-true}
+      WORKFLOWY_API_KEY: ${WORKFLOWY_API_KEY:-}
+      WORKFLOWY_ROOT_NODE_ID: ${WORKFLOWY_ROOT_NODE_ID:-}
+      WAHA_BASE_URL: http://waha:3000
+      WAHA_API_KEY: ${WAHA_API_KEY:?Set WAHA_API_KEY}
+      WAHA_SESSION: ${WAHA_SESSION:-monsoon}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://lenai:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-60}
+      MONSOON_SOUL_PROMPT: ${MONSOON_SOUL_PROMPT:-You are monsoon, a concise personal assistant. Be practical, proactive, and brief.}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/live')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monsoon
+
+  waha:
+    image: devlikeapro/waha:latest
+    restart: unless-stopped
+    environment:
+      WAHA_API_KEY: ${WAHA_API_KEY:?Set WAHA_API_KEY}
+      WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME:-admin}
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD:?Set WAHA_DASHBOARD_PASSWORD}
+      WHATSAPP_SWAGGER_USERNAME: ${WHATSAPP_SWAGGER_USERNAME:-admin}
+      WHATSAPP_SWAGGER_PASSWORD: ${WHATSAPP_SWAGGER_PASSWORD:?Set WHATSAPP_SWAGGER_PASSWORD}
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+    ports:
+      # Dedicated monsoon WAHA — host 13000 avoids clash with other stacks on :3000
+      - "127.0.0.1:13000:3000"
+    volumes:
+      - monsoon_waha_sessions:/app/.sessions
+    networks:
+      - monsoon
+
+volumes:
+  monsoon_pgdata:
+  monsoon_waha_sessions:
+
+networks:
+  monsoon:
+    driver: bridge

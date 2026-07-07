@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     waha_webhook_path: str = "/api/webhooks/waha"
 
     allowed_whatsapp_numbers: str = ""
+    monsoon_allow_self_chat: bool = True
 
     ollama_base_url: str = "http://lenai:11434"
     ollama_model: str = "llama3.2"

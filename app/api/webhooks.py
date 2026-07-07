@@ -44,7 +44,7 @@ async def waha_webhook(
     else:
         payload = event.payload
 
-    if payload.from_me:
+    if payload.from_me and not settings.monsoon_allow_self_chat:
         return {"status": "ignored", "reason": "from_me"}
 
     if payload.has_media and not (payload.body or "").strip():

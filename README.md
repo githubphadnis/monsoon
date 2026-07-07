@@ -6,21 +6,40 @@ Personal **Capture & Reminder** system: WhatsApp in, WorkFlowy mirror, reminders
 
 ## Prerequisites
 
-- Docker and Docker Compose on `notcoolio` (Portainer optional)
-- [WorkFlowy API key](https://workflowy.com/api-key)
-- WAHA instance (included in `docker-compose.yml` or external)
-- WhatsApp number paired to WAHA session
+- Docker and Portainer on **notcoolio**
+- GitHub Actions publishes `ghcr.io/githubphadnis/monsoon:main`
+- **Dedicated monsoon WAHA** (this stack only — port **13000**)
+- [WorkFlowy API key](https://workflowy.com/api-key) (Phase 2+)
+- Ollama on **lenai** (`OLLAMA_BASE_URL`)
+## Deploy on notcoolio (Portainer)
 
-## Quick start (local / notcoolio)
+**Production path:** GitHub Actions builds the app image → GHCR → Portainer stack pull.
+**Do not** `docker compose build` on the server for production.
+
+Full guide: **[docs/deploy-portainer.md](./docs/deploy-portainer.md)**
+
+### Summary
+
+1. Push to `main` → Actions publish `ghcr.io/githubphadnis/monsoon:main`
+2. Portainer → Add stack from Git → `docker-compose.portainer.yml`
+3. Set stack env vars (`POSTGRES_PASSWORD`, `WAHA_*`, `ALLOWED_WHATSAPP_NUMBERS`, …)
+4. Pair **dedicated monsoon WAHA** at `http://notcoolio:13000/dashboard` (session `monsoon`)
+5. Configure webhook → `http://app:8080/api/webhooks/waha`
+6. In **WhatsApp**, message yourself (or the paired number): `todo call bank tomorrow 10am`
+
+### Where messages go
+
+| You type here | monsoon replies here |
+|---------------|----------------------|
+| **WhatsApp** on your phone (Message yourself, or chat with paired number) | **Same WhatsApp chat** |
+
+There is no monsoon web UI for capture in v1.
+
+### Local dev only
 
 ```bash
-git clone https://github.com/githubphadnis/monsoon.git
-cd monsoon
 cp .env.example .env
-# Edit .env — set WORKFLOWY_API_KEY, WAHA_API_KEY, ALLOWED_WHATSAPP_NUMBERS, etc.
-
-docker compose up -d --build
-curl -s http://127.0.0.1:8080/health/live
+docker compose up -d --build   # builds from source; not used on Portainer
 ```
 
 ## Architecture overview
@@ -69,21 +88,6 @@ monsoon/
 | Digest | `digest now` |
 | Help | `help` |
 
-## Deployment (notcoolio)
-
-1. Clone repo on `notcoolio` (or pull via Portainer stack).
-2. Create `.env` from `.env.example` (secrets via Portainer env or file).
-3. `docker compose up -d --build`
-4. Open WAHA dashboard (bound to localhost); scan QR / pair session.
-5. Configure WAHA webhook to monsoon:
-
-```bash
-python infra/scripts/configure_waha_webhook.py \
-  --webhook-url http://monsoon-app:8080/api/webhooks/waha
-```
-
-6. Send `todo test from monsoon` on WhatsApp → expect confirmation reply.
-
 ## Documentation
 
 | Doc | Purpose |
@@ -91,7 +95,7 @@ python infra/scripts/configure_waha_webhook.py \
 | [project-manifest.md](./project-manifest.md) | V1 boundary & success criteria |
 | [ROADMAP.md](./ROADMAP.md) | Phased delivery plan |
 | [dev-docs.md](./dev-docs.md) | Architecture decisions & incidents |
-| [handover.md](./handover.md) | Current ops snapshot |
+| [docs/deploy-portainer.md](./docs/deploy-portainer.md) | Portainer + GHCR deploy on notcoolio |
 | [docs/llm-integration.md](./docs/llm-integration.md) | Ollama / LLM pipeline |
 
 ## License
