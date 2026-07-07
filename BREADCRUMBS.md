@@ -4,14 +4,13 @@
 
 ## Next action (start here)
 
-1. Commit/push complete — implement Phase 1 + 1b on `notcoolio` (capture + Ollama parse).
-2. Deploy stack; pair WAHA; point webhook at monsoon.
-3. Wire `app/integrations/ollama/` per `docs/llm-integration.md`.
+1. Deploy on **notcoolio**: `docker compose up -d --build`
+2. Configure WAHA webhook → monsoon (`infra/scripts/configure_waha_webhook.py`)
+3. Send WhatsApp `todo test from monsoon` and confirm reply + Postgres row.
 
 ## Session summary
 
-- Bootstrapped **monsoon** with cOcO docs, Docker, FastAPI skeleton.
-- Elevated **Ollama/LLM** to core design (not optional); documented in `docs/llm-integration.md`.
+- Implemented **Phase 1**: webhook → parse (regex/Ollama) → Postgres → WhatsApp confirmation.
 
 ## Branch / state
 

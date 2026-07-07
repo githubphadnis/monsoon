@@ -8,9 +8,8 @@
 
 - Repo bootstrapped at `C:\projects\monsoon` with cOcO baseline docs.
 - GitHub remote: https://github.com/githubphadnis/monsoon (LICENSE only on remote before first push).
-- Application code: **skeleton only** (`app/main.py` health stub; `app/integrations/ollama/` placeholder).
-- LLM design: **`docs/llm-integration.md`** — Ollama on lenai is core (parse, digest, nudges).
-- Docker Compose defined for `app`, `postgres`, `waha` — not yet deployed on notcoolio.
+- Application: **Phase 1 implemented** — WAHA webhook, task capture, Ollama fallback parse, WhatsApp replies.
+- Not yet deployed on notcoolio.
 
 ## Broken things
 

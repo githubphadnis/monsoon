@@ -9,13 +9,10 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- cOcO project scaffold: `AGENTS.md`, manifest, README, dev-docs, handover, breadcrumbs, roadmap.
-- Docker Compose stack: `app`, `postgres`, `waha`.
-- `.env.example` with WorkFlowy, WAHA, Postgres, Ollama, and app settings.
-- `docs/llm-integration.md` — Ollama as core LLM layer (OpenLoomi-inspired insight/soul patterns).
-- FastAPI skeleton with `/health/live` and `/health/ready` stubs.
-- GitHub Actions CI workflow placeholder.
-- Cursor cOcO adapter (`.cursor/rules/coco.mdc`).
+- Phase 1 capture loop: WAHA webhook, regex + Ollama parse, Postgres tasks, WhatsApp replies.
+- Models: users, tasks, inbound/outbound messages, task events.
+- `infra/scripts/configure_waha_webhook.py` for session webhook setup.
+- Parser unit tests.
 
 ## [0.0.0] — 2026-07-07
 

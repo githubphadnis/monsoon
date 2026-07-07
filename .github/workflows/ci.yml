@@ -26,5 +26,5 @@ jobs:
       - name: Lint
         run: ruff check app/
 
-      - name: Import check
-        run: python -c "from app.main import app; print(app.title)"
+      - name: Test
+        run: pytest tests/ -q

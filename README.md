@@ -75,8 +75,14 @@ monsoon/
 2. Create `.env` from `.env.example` (secrets via Portainer env or file).
 3. `docker compose up -d --build`
 4. Open WAHA dashboard (bound to localhost); scan QR / pair session.
-5. Point WAHA webhook to monsoon app URL (reverse proxy if needed).
-6. Verify: `curl http://127.0.0.1:8080/health/ready`
+5. Configure WAHA webhook to monsoon:
+
+```bash
+python infra/scripts/configure_waha_webhook.py \
+  --webhook-url http://monsoon-app:8080/api/webhooks/waha
+```
+
+6. Send `todo test from monsoon` on WhatsApp → expect confirmation reply.
 
 ## Documentation
 

@@ -1,0 +1,17 @@
+"""Parsed capture intent from WhatsApp text."""
+
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class ParsedCapture(BaseModel):
+    kind: str = Field(description="todo | note | done | list | digest | help | unknown")
+    title: str | None = None
+    notes: str | None = None
+    task_number: int | None = None
+    due_at: datetime | None = None
+    remind_at: datetime | None = None
+    status: str | None = None
+    priority: str | None = None
+    raw_command: str | None = None
