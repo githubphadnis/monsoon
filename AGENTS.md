@@ -33,7 +33,7 @@ docker compose up -d
 |-------------|---------|
 | `GET /health/live` | Process up |
 | `GET /health/ready` | DB + integrations reachable |
-| WAHA dashboard | `http://notcoolio:13000/dashboard` — **dedicated monsoon WAHA** |
+| WAHA dashboard | `http://127.0.0.1:13000/dashboard` via `ssh -L 13000:127.0.0.1:13000 prakalp@notcoolio` — **dedicated monsoon WAHA** |
 | Capture | **WhatsApp** → Message yourself or paired number |
 
 ## Deploy

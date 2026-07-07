@@ -7,6 +7,13 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Self-chat capture: resolve `@lid` sender via `me.id` so allowed-number check passes.
+- Webhook subscribes to `message.any` (required for Message-yourself on WAHA NOWEB).
+- Webhook script sends `X-Api-Key` header to monsoon.
+- Deploy docs: SSH tunnel, WAHA Core session naming, webhook troubleshooting.
+
 ### Added
 
 - GitHub Actions `docker-publish.yml` → GHCR `ghcr.io/githubphadnis/monsoon:main`.

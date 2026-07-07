@@ -5,17 +5,14 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.models import User
+from app.services.sender_identity import is_allowed_sender, phone_from_chat_id, resolve_sender_phone
 
-
-def phone_from_chat_id(chat_id: str) -> str:
-    return chat_id.split("@", 1)[0]
-
-
-def is_allowed_sender(phone: str, settings: Settings) -> bool:
-    allowed = settings.allowed_numbers_set
-    if not allowed:
-        return True
-    return phone in allowed
+__all__ = [
+    "get_or_create_user",
+    "is_allowed_sender",
+    "phone_from_chat_id",
+    "resolve_sender_phone",
+]
 
 
 def get_or_create_user(db: Session, phone: str, settings: Settings) -> User:

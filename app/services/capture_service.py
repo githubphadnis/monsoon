@@ -39,7 +39,8 @@ class CaptureService:
         *,
         source_message_id: str,
         chat_id: str,
-        sender_id: str,
+        sender_id: str | None = None,
+        sender_phone: str | None = None,
         text: str,
         raw_payload: dict,
     ) -> str | None:
@@ -50,10 +51,11 @@ class CaptureService:
             logger.info("Duplicate webhook ignored: %s", source_message_id)
             return None
 
+        resolved_sender = sender_id or chat_id
         inbound = InboundMessage(
             source="whatsapp",
             source_message_id=source_message_id,
-            sender_id=sender_id,
+            sender_id=resolved_sender,
             chat_id=chat_id,
             raw_payload=raw_payload,
             parsed_text=text,
@@ -61,7 +63,7 @@ class CaptureService:
         )
         self._db.add(inbound)
 
-        phone = sender_id.split("@", 1)[0]
+        phone = sender_phone or resolved_sender.split("@", 1)[0]
         user = get_or_create_user(self._db, phone, self._settings)
 
         try:

@@ -29,15 +29,17 @@ def main() -> int:
     if args.api_key:
         headers["X-Api-Key"] = args.api_key
 
+    webhook: dict = {
+        "url": args.webhook_url,
+        "events": ["message", "message.any"],
+    }
+    if args.api_key:
+        webhook["customHeaders"] = [{"name": "X-Api-Key", "value": args.api_key}]
+
     payload = {
         "name": args.session,
         "config": {
-            "webhooks": [
-                {
-                    "url": args.webhook_url,
-                    "events": ["message"],
-                }
-            ]
+            "webhooks": [webhook],
         },
     }
 

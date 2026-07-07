@@ -4,15 +4,15 @@
 
 ## Next action (start here)
 
-1. Merge/push triggers GHCR publish — confirm Actions green on GitHub.
-2. Portainer on notcoolio: stack from `docker-compose.portainer.yml` (see `docs/deploy-portainer.md`).
-3. Pair **dedicated** monsoon WAHA (`:13000`, session `monsoon`); send test on **WhatsApp**.
+1. Wait for GitHub Actions → GHCR publish green, then Portainer **Pull and redeploy** `app`.
+2. Re-run webhook curl with `message` + `message.any` (see `docs/deploy-portainer.md` §4).
+3. WhatsApp test: `todo test monsoon reply`.
 
 ## Session summary
 
-- Implemented **Phase 1**: webhook → parse (regex/Ollama) → Postgres → WhatsApp confirmation.
+- Portainer deploy **OK**; Postgres **OK**; WAHA dashboard blocked by **localhost-only bind** (`127.0.0.1:13000`).
 
 ## Branch / state
 
-- Local: `C:\projects\monsoon` (cloned from GitHub)
-- Remote: `main` — pending first content push
+- Remote: `main` on GitHub; GHCR image published.
+- notcoolio: stack deployed (user confirmed).

@@ -23,7 +23,7 @@ Full guide: **[docs/deploy-portainer.md](./docs/deploy-portainer.md)**
 1. Push to `main` → Actions publish `ghcr.io/githubphadnis/monsoon:main`
 2. Portainer → Add stack from Git → `docker-compose.portainer.yml`
 3. Set stack env vars (`POSTGRES_PASSWORD`, `WAHA_*`, `ALLOWED_WHATSAPP_NUMBERS`, …)
-4. Pair **dedicated monsoon WAHA** at `http://notcoolio:13000/dashboard` (session `monsoon`)
+4. Pair **dedicated monsoon WAHA** — SSH tunnel `ssh -L 13000:127.0.0.1:13000 prakalp@notcoolio`, then open `http://127.0.0.1:13000/dashboard` (session **`default`** — WAHA Core)
 5. Configure webhook → `http://app:8080/api/webhooks/waha`
 6. In **WhatsApp**, message yourself (or the paired number): `todo call bank tomorrow 10am`
 

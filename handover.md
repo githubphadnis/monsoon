@@ -6,23 +6,21 @@
 
 ## Current state / WIP
 
-- Repo bootstrapped at `C:\projects\monsoon` with cOcO baseline docs.
-- GitHub remote: https://github.com/githubphadnis/monsoon (LICENSE only on remote before first push).
-- Deploy model: **GitHub Actions → GHCR → Portainer** (`docs/deploy-portainer.md`).
-- Dedicated **monsoon WAHA** on host port **13000** — not shared with Moneypenny.
-- Not yet deployed on notcoolio.
+- **Deployed on notcoolio** via Portainer (`docker-compose.portainer.yml`) — user reports stack up, Postgres OK.
+- GHCR: `ghcr.io/githubphadnis/monsoon:main`.
+- Dedicated **monsoon WAHA** on **`127.0.0.1:13000`** — localhost-only; reach via SSH tunnel from PC.
+- Phase 1 app code shipped; webhook not yet wired until WAHA paired.
 
 ## Broken things
 
-- None (greenfield).
+- **WAHA dashboard unreachable from PC** if opening `http://notcoolio:13000` — expected; use SSH tunnel (see `docs/deploy-portainer.md` §3).
 
 ## Next immediate steps
 
-1. Review scaffold docs (`project-manifest.md`, `ROADMAP.md`).
-2. Commit and push bootstrap to `main` when ready.
-3. Deploy stack on `notcoolio`; pair WAHA session.
-4. Implement Phase 1: webhook intake + `todo` → Postgres + WhatsApp confirmation.
-5. Implement Phase 2: WorkFlowy push sync.
+1. SSH tunnel + open `http://127.0.0.1:13000/dashboard`; start session **`default`**, scan QR (WAHA Core — no custom session names).
+2. Run `configure_waha_webhook.py` (webhook → `http://app:8080/api/webhooks/waha`).
+3. WhatsApp capture test (`todo …`).
+4. Phase 2: WorkFlowy sync.
 
 ## Environment
 

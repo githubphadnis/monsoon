@@ -9,7 +9,7 @@ from app.config import Settings, get_settings
 from app.db import get_db
 from app.schemas.waha import WahaMessagePayload, WahaWebhookEvent
 from app.services.capture_service import CaptureService
-from app.services.users import is_allowed_sender, phone_from_chat_id
+from app.services.sender_identity import resolve_sender_phone
 
 logger = logging.getLogger("monsoon.api.webhooks")
 
@@ -55,9 +55,16 @@ async def waha_webhook(
         return {"status": "ignored", "reason": "empty"}
 
     sender = payload.from_
-    phone = phone_from_chat_id(sender)
-    if not is_allowed_sender(phone, settings):
-        logger.warning("Rejected sender %s", phone)
+    payload_extra = payload.model_dump() if hasattr(payload, "model_dump") else {}
+    phone = resolve_sender_phone(
+        from_id=sender,
+        from_me=payload.from_me,
+        body=body,
+        payload_extra=payload_extra,
+        settings=settings,
+    )
+    if not phone:
+        logger.warning("Rejected sender %s (from_me=%s)", sender, payload.from_me)
         raise HTTPException(status_code=403, detail="Sender not allowed")
 
     chat_id = sender
@@ -67,7 +74,7 @@ async def waha_webhook(
         await service.handle_text(
             source_message_id=payload.id,
             chat_id=chat_id,
-            sender_id=sender,
+            sender_phone=phone,
             text=text,
             raw_payload=body,
         )
