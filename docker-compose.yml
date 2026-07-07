@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: monsoon-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-monsoon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-monsoon}
+    volumes:
+      - monsoon_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-monsoon} -d ${POSTGRES_DB:-monsoon}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - monsoon
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: monsoon-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/live')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - monsoon
+
+  waha:
+    image: devlikeapro/waha:latest
+    container_name: monsoon-waha
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      WAHA_API_KEY: ${WAHA_API_KEY:?Set WAHA_API_KEY in .env}
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - monsoon_waha_sessions:/app/.sessions
+    networks:
+      - monsoon
+
+volumes:
+  monsoon_pgdata:
+  monsoon_waha_sessions:
+
+networks:
+  monsoon:
+    driver: bridge
