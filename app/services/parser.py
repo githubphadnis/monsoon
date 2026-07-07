@@ -8,7 +8,7 @@ from app.config import Settings
 from app.integrations.ollama.client import OllamaClient
 from app.schemas.capture import ParsedCapture
 
-TODO_RE = re.compile(r"^todo\s+(.+)$", re.IGNORECASE)
+TODO_RE = re.compile(r"^to[\s-]*do\s+(.+)$", re.IGNORECASE)
 NOTE_RE = re.compile(r"^note\s+(.+)$", re.IGNORECASE)
 DONE_RE = re.compile(r"^done\s+(\d+)$", re.IGNORECASE)
 LIST_RE = re.compile(r"^list(?:\s+(\w+))?$", re.IGNORECASE)

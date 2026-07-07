@@ -18,7 +18,7 @@ logger = logging.getLogger("monsoon.capture")
 
 HELP_TEXT = """monsoon — capture & remind
 
-todo <task>          create task
+todo / to do <task>   create task
 note <text>          save a note
 done <id>            mark complete
 list today           open tasks

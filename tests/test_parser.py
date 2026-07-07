@@ -14,6 +14,22 @@ def test_todo_with_tomorrow_time():
     assert parsed.status == "scheduled"
 
 
+def test_to_do_with_space():
+    settings = Settings()
+    parsed = parse_with_regex("to do buy milk", settings)
+    assert parsed is not None
+    assert parsed.kind == "todo"
+    assert parsed.title == "buy milk"
+
+
+def test_to_do_hyphenated():
+    settings = Settings()
+    parsed = parse_with_regex("to-do pick up parcel", settings)
+    assert parsed is not None
+    assert parsed.kind == "todo"
+    assert parsed.title == "pick up parcel"
+
+
 def test_done_command():
     settings = Settings()
     parsed = parse_with_regex("done 7", settings)
