@@ -8,6 +8,7 @@
 | 2026-07-07 | WAHA for WhatsApp | Self-hosted HTTP API + webhooks; fits Docker on notcoolio |
 | 2026-07-07 | Deterministic command grammar in v1 | Reliable capture before optional Ollama NL parsing |
 | 2026-07-07 | Ollama as core LLM layer (lenai) | Parse, classify, digest, and nudges; borrow OpenLoomi insight/soul patterns at smaller scope |
+| 2026-07-07 | Context atlas north star | Tasks are one lens; Gmail + full WA index — see `docs/context-atlas.md` |
 | 2026-07-07 | WorkFlowy fractal context | Task node = todo; follow-ups are child bullets — see `docs/workflowy-mirror.md` |
 
 ## WorkFlowy — fractal task + context
