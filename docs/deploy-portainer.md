@@ -42,6 +42,7 @@ GitHub → Packages → `monsoon` → Package settings → Change visibility →
 | `WAHA_DASHBOARD_PASSWORD` | yes |
 | `WHATSAPP_SWAGGER_PASSWORD` | yes |
 | `ALLOWED_WHATSAPP_NUMBERS` | yes |
+| `ALLOWED_WHATSAPP_CHAT_IDS` | yes — conversation JIDs only (e.g. self-chat `918291882204@c.us`). Empty/missing → **no replies** |
 
 `DATABASE_URL`, `APP_HOST`, `APP_PORT`, `WAHA_WEBHOOK_PATH`, cron vars are **not** used by `docker-compose.portainer.yml` (safe to omit).
 

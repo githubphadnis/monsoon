@@ -134,6 +134,8 @@ async def health_ready() -> dict[str, object]:
         "ollama_reachable": ollama_ok,
         "gmail_configured": settings.gmail_configured,
         "workflowy_configured": bool(settings.workflowy_api_key),
+        "allowed_whatsapp_chat_ids": sorted(settings.allowed_chat_ids_set),
+        "chat_allowlist_active": bool(settings.allowed_chat_ids_set),
     }
 
 

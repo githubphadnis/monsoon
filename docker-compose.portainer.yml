@@ -40,6 +40,8 @@ services:
       APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Amsterdam}
       APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
       ALLOWED_WHATSAPP_NUMBERS: ${ALLOWED_WHATSAPP_NUMBERS:?Set ALLOWED_WHATSAPP_NUMBERS}
+      # Required for replies: conversation JIDs only (e.g. 918291882204@c.us). Empty = deny all.
+      ALLOWED_WHATSAPP_CHAT_IDS: ${ALLOWED_WHATSAPP_CHAT_IDS:?Set ALLOWED_WHATSAPP_CHAT_IDS to the self-chat or dedicated monsoon chat JID}
       MONSOON_ALLOW_SELF_CHAT: ${MONSOON_ALLOW_SELF_CHAT:-true}
       MONSOON_AUTO_WEBHOOK: ${MONSOON_AUTO_WEBHOOK:-true}
       # localhost — WAHA shares this container's network namespace (see waha service)

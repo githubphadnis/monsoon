@@ -10,18 +10,15 @@ from app.db import get_db
 from app.schemas.waha import WahaMessagePayload, WahaWebhookEvent
 from app.services.capture_service import CaptureService
 from app.services.outbound_guard import is_outbound_echo
-from app.services.sender_identity import resolve_reply_chat_id, resolve_sender_phone
+from app.services.sender_identity import (
+    is_chat_allowed,
+    resolve_conversation_chat_id,
+    resolve_sender_phone,
+)
 
 logger = logging.getLogger("monsoon.api.webhooks")
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
-
-
-def _chat_allowed(chat_id: str, settings: Settings) -> bool:
-    allowed = settings.allowed_chat_ids_set
-    if not allowed:
-        return True
-    return chat_id in allowed
 
 
 def _verify_webhook_key(
@@ -74,6 +71,29 @@ async def waha_webhook(
 
     sender = payload.from_
     payload_extra = payload.model_dump() if hasattr(payload, "model_dump") else {}
+
+    me = body.get("me") if isinstance(body.get("me"), dict) else {}
+    me_id = str(me.get("id", "")) or None
+    chat_id = resolve_conversation_chat_id(
+        sender,
+        payload_extra,
+        from_me=payload.from_me,
+        to_id=payload.to,
+        me_id=me_id,
+    )
+
+    # Chat-id gate first — never reply based on sender alone.
+    if not is_chat_allowed(chat_id, settings):
+        logger.info(
+            "Ignored chat outside allowlist chat_id=%s from=%s from_me=%s to=%s allowed=%s",
+            chat_id,
+            sender,
+            payload.from_me,
+            payload.to,
+            sorted(settings.allowed_chat_ids_set) or ["<empty-deny-all>"],
+        )
+        return {"status": "ignored", "reason": "chat_not_allowed"}
+
     phone = resolve_sender_phone(
         from_id=sender,
         from_me=payload.from_me,
@@ -85,12 +105,6 @@ async def waha_webhook(
         logger.warning("Rejected sender %s (from_me=%s)", sender, payload.from_me)
         raise HTTPException(status_code=403, detail="Sender not allowed")
 
-    me = body.get("me") if isinstance(body.get("me"), dict) else {}
-    me_id = str(me.get("id", "")) or None
-    chat_id = resolve_reply_chat_id(sender, payload_extra, to_id=payload.to, me_id=me_id)
-    if not _chat_allowed(chat_id, settings):
-        logger.info("Ignored chat outside allowlist chat_id=%s", chat_id)
-        return {"status": "ignored", "reason": "chat_not_allowed"}
     logger.info("Processing capture from=%s chat_id=%s phone=%s", sender, chat_id, phone)
     service = CaptureService(db, settings)
     try:

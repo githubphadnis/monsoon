@@ -1,4 +1,6 @@
-"""WhatsApp sender id → allowed phone resolution (no DB)."""
+"""WhatsApp sender / chat JID resolution (no DB)."""
+
+from __future__ import annotations
 
 from typing import Any
 
@@ -54,6 +56,22 @@ def _to_cus_jid(jid: str) -> str:
     return jid
 
 
+def normalize_chat_id(jid: str) -> str:
+    """Canonical form for allowlist comparison (@s.whatsapp.net → @c.us)."""
+    return _to_cus_jid(jid.strip())
+
+
+def chat_id_aliases(jid: str) -> set[str]:
+    """Forms that may appear in WAHA payloads for the same conversation."""
+    n = normalize_chat_id(jid)
+    aliases = {jid.strip(), n}
+    if n.endswith("@c.us"):
+        phone = phone_from_chat_id(n)
+        aliases.add(f"{phone}@s.whatsapp.net")
+        aliases.add(phone)
+    return {a for a in aliases if a}
+
+
 def _extract_remote_jid(payload_extra: dict[str, Any] | None) -> str | None:
     extra = payload_extra or {}
     data = extra.get("_data") if isinstance(extra.get("_data"), dict) else {}
@@ -64,25 +82,69 @@ def _extract_remote_jid(payload_extra: dict[str, Any] | None) -> str | None:
     return None
 
 
+def resolve_conversation_chat_id(
+    from_id: str,
+    payload_extra: dict[str, Any] | None,
+    *,
+    from_me: bool | None = None,
+    to_id: str | None = None,
+    me_id: str | None = None,
+) -> str:
+    """Resolve the conversation JID to reply into / allowlist against.
+
+    - Incoming (fromMe=false): conversation is the remote peer / group (`from` / remoteJid).
+    - Outgoing (fromMe=true): conversation is the recipient (`to` / remoteJid), not "me".
+    """
+    if from_me:
+        if to_id:
+            return _to_cus_jid(to_id)
+        remote = _extract_remote_jid(payload_extra)
+        if remote:
+            return remote
+        if me_id:
+            return _to_cus_jid(me_id)
+        return _to_cus_jid(from_id)
+
+    remote = _extract_remote_jid(payload_extra)
+    if remote and not remote.endswith("@lid"):
+        return remote
+    if from_id and not from_id.endswith("@lid"):
+        return _to_cus_jid(from_id)
+    if remote:
+        return remote
+    if me_id:
+        return _to_cus_jid(me_id)
+    return _to_cus_jid(from_id)
+
+
+# Back-compat alias used by older call sites / tests
 def resolve_reply_chat_id(
     from_id: str,
     payload_extra: dict[str, Any] | None,
     *,
     to_id: str | None = None,
     me_id: str | None = None,
+    from_me: bool | None = None,
 ) -> str:
-    """Resolve the actual conversation JID for replies / allowlist checks."""
-    if to_id:
-        return _to_cus_jid(to_id)
+    return resolve_conversation_chat_id(
+        from_id,
+        payload_extra,
+        from_me=from_me,
+        to_id=to_id,
+        me_id=me_id,
+    )
 
-    remote = _extract_remote_jid(payload_extra)
-    if remote:
-        return remote
 
-    if not from_id.endswith("@lid"):
-        return _to_cus_jid(from_id)
+def is_chat_allowed(chat_id: str, settings: Settings) -> bool:
+    """Strict chat allowlist: only listed conversation JIDs may receive monsoon replies.
 
-    if me_id:
-        return _to_cus_jid(me_id)
-
-    return _to_cus_jid(from_id)
+    Empty allowlist → deny all (fail closed). Set ALLOWED_WHATSAPP_CHAT_IDS explicitly.
+    """
+    allowed = settings.allowed_chat_ids_set
+    if not allowed:
+        return False
+    candidates = chat_id_aliases(chat_id)
+    for entry in allowed:
+        if candidates & chat_id_aliases(entry):
+            return True
+    return False
