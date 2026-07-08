@@ -54,24 +54,35 @@ def _to_cus_jid(jid: str) -> str:
     return jid
 
 
+def _extract_remote_jid(payload_extra: dict[str, Any] | None) -> str | None:
+    extra = payload_extra or {}
+    data = extra.get("_data") if isinstance(extra.get("_data"), dict) else {}
+    key = data.get("key") if isinstance(data.get("key"), dict) else {}
+    for candidate in (key.get("remoteJidAlt"), key.get("remoteJid")):
+        if isinstance(candidate, str) and candidate:
+            return _to_cus_jid(candidate)
+    return None
+
+
 def resolve_reply_chat_id(
     from_id: str,
     payload_extra: dict[str, Any] | None,
     *,
+    to_id: str | None = None,
     me_id: str | None = None,
 ) -> str:
-    """Prefer @c.us JID for replies when self-chat uses @lid."""
-    if not from_id.endswith("@lid"):
-        return from_id
+    """Resolve the actual conversation JID for replies / allowlist checks."""
+    if to_id:
+        return _to_cus_jid(to_id)
 
-    extra = payload_extra or {}
-    data = extra.get("_data") if isinstance(extra.get("_data"), dict) else {}
-    key = data.get("key") if isinstance(data.get("key"), dict) else {}
-    alt = key.get("remoteJidAlt")
-    if isinstance(alt, str) and alt:
-        return _to_cus_jid(alt)
+    remote = _extract_remote_jid(payload_extra)
+    if remote:
+        return remote
+
+    if not from_id.endswith("@lid"):
+        return _to_cus_jid(from_id)
 
     if me_id:
         return _to_cus_jid(me_id)
 
-    return from_id
+    return _to_cus_jid(from_id)

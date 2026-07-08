@@ -87,7 +87,7 @@ async def waha_webhook(
 
     me = body.get("me") if isinstance(body.get("me"), dict) else {}
     me_id = str(me.get("id", "")) or None
-    chat_id = resolve_reply_chat_id(sender, payload_extra, me_id=me_id)
+    chat_id = resolve_reply_chat_id(sender, payload_extra, to_id=payload.to, me_id=me_id)
     if not _chat_allowed(chat_id, settings):
         logger.info("Ignored chat outside allowlist chat_id=%s", chat_id)
         return {"status": "ignored", "reason": "chat_not_allowed"}
