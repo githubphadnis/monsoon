@@ -5,6 +5,10 @@
 APP_TIMEZONE=Europe/Amsterdam
 APP_LOG_LEVEL=INFO
 ALLOWED_WHATSAPP_NUMBERS=918291882204
+# Optional: restrict monsoon to a single conversation only.
+# Example self-chat: 918291882204@c.us
+# Example group: 120363xxxxxxxxx@g.us
+ALLOWED_WHATSAPP_CHAT_IDS=
 MONSOON_ALLOW_SELF_CHAT=true
 MONSOON_AUTO_WEBHOOK=true
 

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     monsoon_webhook_target_url: str = "http://127.0.0.1:8080/api/webhooks/waha"
 
     allowed_whatsapp_numbers: str = ""
+    allowed_whatsapp_chat_ids: str = ""
     monsoon_allow_self_chat: bool = True
 
     ollama_base_url: str = "http://lenai:11434"
@@ -75,6 +76,10 @@ class Settings(BaseSettings):
     @property
     def allowed_numbers_set(self) -> set[str]:
         return {n.strip() for n in self.allowed_whatsapp_numbers.split(",") if n.strip()}
+
+    @property
+    def allowed_chat_ids_set(self) -> set[str]:
+        return {n.strip() for n in self.allowed_whatsapp_chat_ids.split(",") if n.strip()}
 
     @property
     def gmail_configured(self) -> bool:

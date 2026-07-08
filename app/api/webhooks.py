@@ -17,6 +17,13 @@ logger = logging.getLogger("monsoon.api.webhooks")
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
 
+def _chat_allowed(chat_id: str, settings: Settings) -> bool:
+    allowed = settings.allowed_chat_ids_set
+    if not allowed:
+        return True
+    return chat_id in allowed
+
+
 def _verify_webhook_key(
     settings: Settings = Depends(get_settings),
     x_api_key: str | None = Header(default=None, alias="X-Api-Key"),
@@ -81,6 +88,9 @@ async def waha_webhook(
     me = body.get("me") if isinstance(body.get("me"), dict) else {}
     me_id = str(me.get("id", "")) or None
     chat_id = resolve_reply_chat_id(sender, payload_extra, me_id=me_id)
+    if not _chat_allowed(chat_id, settings):
+        logger.info("Ignored chat outside allowlist chat_id=%s", chat_id)
+        return {"status": "ignored", "reason": "chat_not_allowed"}
     logger.info("Processing capture from=%s chat_id=%s phone=%s", sender, chat_id, phone)
     service = CaptureService(db, settings)
     try:
