@@ -87,6 +87,7 @@ async def test_generate_digest_includes_soul_and_digest_instruction():
     system_content = payload["messages"][0]["content"]
     assert "Soul prompt for monsoon" in system_content
     assert DIGEST_INSTRUCTION in system_content
+    assert "never lead with" in system_content
     user_content = payload["messages"][1]["content"]
     assert "2026-07-08T10:00:00+02:00" in user_content
     assert "Task A" in user_content

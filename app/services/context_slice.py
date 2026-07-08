@@ -50,12 +50,14 @@ def _fetch_task_lines(db: Session, user_id, tz: ZoneInfo) -> list[str]:
 
 
 def _format_task_line(task: Task, tz: ZoneInfo) -> str:
-    parts = [f"#{task.display_number} {task.title} [{task.status}]"]
+    """Title-first line for LLM context; internal id at end only."""
+    parts = [f"{task.title} [{task.status}]"]
     if task.due_at:
         due = task.due_at.astimezone(tz).strftime("%Y-%m-%d %H:%M")
         parts.append(f"due:{due}")
     if task.notes:
         parts.append(f"notes:{task.notes}")
+    parts.append(f"ref:T{task.display_number}")
     return " ".join(parts)
 
 

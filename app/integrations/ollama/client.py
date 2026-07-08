@@ -27,13 +27,17 @@ No markdown. No explanation. JSON only."""
 
 DIGEST_INSTRUCTION = (
     "Summarize open work. Lead with what matters today. "
-    "End with 1-2 concrete next steps. Max 800 chars. WhatsApp-friendly plain text."
+    "End with 1-2 concrete next steps. Max 800 chars. WhatsApp-friendly plain text. "
+    "Name tasks by their title or subject in plain language — never lead with "
+    "'Task #N', '#N', or 'id:T' references in the reply."
 )
 
 REFLECT_INSTRUCTION = (
     "User asked for reflection on a topic. Be factual to context only. "
     "Structure: (1) what's active (2) blockers/risks (3) one suggested next step. "
-    "Max 1000 chars."
+    "Max 1000 chars. "
+    "Name tasks by their title or subject in plain language — never lead with "
+    "'Task #N', '#N', or 'id:T' references in the reply."
 )
 
 

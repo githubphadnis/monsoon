@@ -87,7 +87,8 @@ def test_open_tasks_appear_in_output(db: Session, settings: Settings, user: User
         db, settings, ContextSliceRequest(user_id=user.id)
     )
 
-    assert "#3 call bank [inbox]" in result.tasks_text
+    assert "call bank [inbox]" in result.tasks_text
+    assert "ref:T3" in result.tasks_text
     assert "notes:urgent" in result.tasks_text
     assert "done task" not in result.tasks_text
     assert result.char_count > 0
@@ -184,7 +185,7 @@ def test_max_chars_truncates_oldest_first(db: Session, settings: Settings, user:
     )
 
     assert result.char_count <= 80
-    assert "#5" in result.tasks_text
+    assert "ref:T5" in result.tasks_text
     assert "#1" not in result.tasks_text
 
 

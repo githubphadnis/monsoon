@@ -66,7 +66,7 @@ async def test_digest_falls_back_to_sql_list():
         result = await service._digest(user)
 
     assert "*Digest*" in result
-    assert "#2 Buy milk" in result
+    assert "Buy milk" in result
 
 
 @pytest.mark.asyncio

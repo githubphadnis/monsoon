@@ -259,6 +259,7 @@ class CaptureService:
         return "\n".join(lines)
 
     def _sql_digest(self, user: User) -> str:
+        tz = ZoneInfo(self._settings.app_timezone)
         open_tasks = list(
             self._db.scalars(
                 select(Task)
@@ -271,7 +272,10 @@ class CaptureService:
             return "Nothing open right now. Inbox zero?"
         lines = ["*Digest*"]
         for task in reversed(open_tasks):
-            lines.append(f"#{task.display_number} {task.title} [{task.status}]")
+            due = ""
+            if task.due_at:
+                due = f" — {task.due_at.astimezone(tz).strftime('%d %b %H:%M')}"
+            lines.append(f"{task.title} [{task.status}]{due}")
         return "\n".join(lines)
 
     async def _digest(self, user: User) -> str:
