@@ -100,3 +100,22 @@ same task node — see `docs/workflowy-mirror.md`.
 ## Successful patterns
 
 - cOcO scaffold from day one — manifest, roadmap, and handover before code sprawl.
+
+## Parallel work — Cursor + OpenCode (2026-07-08)
+
+**Decision:** For fast delivery, implementation slices may run in **OpenCode Desktop** while
+Cursor stays **orchestrator + reviewer + integrator**. Manual handoff (same model as griham
+`dev-docs.md §1.10`).
+
+**Coordination:** `docs/parallel-work.md` (worktrees, merge order, conflict avoidance).
+**Lock board:** `docs/handoff/STATUS.md` — update before starting a track.
+**Briefs:** `docs/handoff/oc-*.md` — paste-ready prompts; template in `docs/handoff/TEMPLATE.md`.
+
+**Rules:**
+
+1. One agent per exclusive file set; OC-03 after OC-01 + OC-02.
+2. Separate git worktrees (`monsoon-oc01`, …) or sequential single-folder runs.
+3. OpenCode never commits/pushes; Cursor reviews `git diff` + `pytest` before merge.
+4. Every merge updates `CHANGELOG.md`, `docs/llm-integration.md`, and session docs.
+
+**Current initiative:** LLM Phase A — context slice, Ollama contributions, `reflect` + LLM digest.

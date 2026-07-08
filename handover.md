@@ -23,11 +23,9 @@
 
 ## Next immediate steps
 
-1. Pull/redeploy `main` on Portainer (full stack if compose changed).
-2. `curl http://127.0.0.1:8080/health/webhook` — webhook + `noweb_store_enabled`.
-3. `wa_backfill.py --max-chats 5` → check `/health/wa-index`.
-4. Optional: `cleanup_loop_tasks.py --dry-run` if self-chat loop left junk tasks.
-5. Gmail: only after WA pilot — `gmail_oauth_setup.py` on PC, then Portainer env.
+1. **Parallel LLM Phase A** — see `docs/parallel-work.md` + `docs/handoff/STATUS.md`.
+2. Operator: WA backfill `--max-chats 5` (independent).
+3. After OC merges: deploy `feature/llm-phase-a` to notcoolio when reviewed.
 
 ## Environment
 
