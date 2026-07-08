@@ -64,6 +64,21 @@ class Task(Base):
 
     user: Mapped["User"] = relationship(back_populates="tasks")
     events: Mapped[list["TaskEvent"]] = relationship(back_populates="task")
+    context_items: Mapped[list["TaskContextItem"]] = relationship(back_populates="task")
+
+
+class TaskContextItem(Base):
+    __tablename__ = "task_context_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+    workflowy_node_id: Mapped[str | None] = mapped_column(String(128))
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    source_ref: Mapped[str | None] = mapped_column(String(256))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    task: Mapped["Task"] = relationship(back_populates="context_items")
 
 
 class TaskEvent(Base):

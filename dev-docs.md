@@ -11,7 +11,8 @@
 | 2026-07-07 | WAHA sidecar networking | `network_mode: service:app` — webhooks/API via `127.0.0.1`; avoids Docker DNS between WAHA and app |
 | 2026-07-07 | NOWEB store required for history APIs | `/chats` and `/messages` need `config.noweb.store.enabled`; monsoon sets on session PUT at startup |
 | 2026-07-07 | Context atlas north star | Tasks are one lens; Gmail + full WA index — see `docs/context-atlas.md` |
-| 2026-07-07 | WorkFlowy fractal context | Task node = todo; follow-ups are child bullets — see `docs/workflowy-mirror.md` |
+| 2026-07-08 | Context slice + LLM digest/reflect | SQL bundle per LLM call; soul prompt on Ollama contributions; fail-open to SQL digest |
+| 2026-07-08 | WorkFlowy push mirror v1 | Task create → WF todo + system children; `note <id>` → context child; `task_context_items` table |
 
 ## WorkFlowy — fractal task + context
 

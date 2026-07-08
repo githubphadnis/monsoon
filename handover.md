@@ -23,9 +23,9 @@
 
 ## Next immediate steps
 
-1. **Parallel LLM Phase A** — see `docs/parallel-work.md` + `docs/handoff/STATUS.md`.
-2. Operator: WA backfill `--max-chats 5` (independent).
-3. After OC merges: deploy `feature/llm-phase-a` to notcoolio when reviewed.
+1. **You:** WA backfill `--max-chats 5` on notcoolio (only operator task).
+2. **Cursor:** merge `feature/llm-phase-a` → `main`, push, Portainer pull.
+3. Smoke: `digest`, `reflect <topic>`, `todo` + WorkFlowy mirror (if API key set).
 
 ## Environment
 

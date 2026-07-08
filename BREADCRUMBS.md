@@ -1,26 +1,29 @@
 # BREADCRUMBS — monsoon
 
-**Updated:** 2026-07-08 06:55 — orchestration LIVE
+**Updated:** 2026-07-08 07:05
 
-## YOUR actions right now (operator)
+## Your only action
 
-Open **`docs/handoff/OPERATOR-RUNBOOK.md`** and run **Phase 1 + Phase 2 + Phase 3 in parallel**.
+**WA backfill on notcoolio** (Phase 3):
 
-Report back: `Phase 1 done`, `Phase 2 done`, `Phase 3 done` (with diff stat / errors).
+```bash
+curl -s http://127.0.0.1:8080/health/webhook | python3 -m json.tool
+docker exec monsoon-app python infra/scripts/wa_backfill.py --max-chats 5
+curl -s http://127.0.0.1:8080/health/wa-index | python3 -m json.tool
+```
 
-## Cursor (integrator) state
+Report: `Phase 3 done` + wa-index JSON.
 
-- Branch: `feature/llm-phase-a` @ `C:\projects\monsoon`
-- Worktrees: `monsoon-oc01`, `monsoon-oc02` ready for OpenCode
-- Waiting: OC-01 + OC-02 completion → merge → create `monsoon-oc03` → OC-03
+**Skip OpenCode** — Cursor shipped OC-01/02/03 + WorkFlowy on `feature/llm-phase-a`.
 
-## Git
+## Cursor state
 
-- `main` @ `f2585f3` — orchestration docs committed
-- `feature/llm-phase-a` — integrator (same commit, merges land here)
+- `feature/llm-phase-a` — LLM digest, reflect, context slice, WorkFlowy push, 58 tests pass
+- Pending: commit, your WA pilot, deploy branch to notcoolio
 
-## Defer
+## Smoke after deploy
 
-- Gmail OAuth
-- OC-03 until 01+02 merged
-- Push to origin until integration reviewed
+- `digest`
+- `reflect griham`
+- `todo smoke test`
+- `note 1 follow-up text` (if task #1 exists)

@@ -38,6 +38,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 - Models: users, tasks, inbound/outbound messages, task events.
 - `infra/scripts/configure_waha_webhook.py` for session webhook setup.
 - Parser unit tests.
+- **LLM Phase A:** context slice, Ollama digest/reflect, WhatsApp `reflect <topic>`, LLM digest with SQL fallback.
+- **WorkFlowy push mirror:** client, mirror service, `task_context_items`; sync on create, `note <id>`, `done`.
 - Parallel work playbook: `docs/parallel-work.md`, handoff briefs `docs/handoff/oc-*.md`, lock board `docs/handoff/STATUS.md` (Cursor + OpenCode, LLM Phase A).
 
 ## [0.0.0] — 2026-07-07

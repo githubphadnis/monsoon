@@ -25,6 +25,17 @@ Return a single JSON object with keys:
 
 No markdown. No explanation. JSON only."""
 
+DIGEST_INSTRUCTION = (
+    "Summarize open work. Lead with what matters today. "
+    "End with 1-2 concrete next steps. Max 800 chars. WhatsApp-friendly plain text."
+)
+
+REFLECT_INSTRUCTION = (
+    "User asked for reflection on a topic. Be factual to context only. "
+    "Structure: (1) what's active (2) blockers/risks (3) one suggested next step. "
+    "Max 1000 chars."
+)
+
 
 class OllamaClient:
     def __init__(self, settings: Settings) -> None:
@@ -65,6 +76,45 @@ class OllamaClient:
             return None
 
         return self._parse_json_content(content)
+
+    async def generate_text(
+        self, *, user_prompt: str, system_prompt: str | None = None
+    ) -> str | None:
+        system = system_prompt or self._settings.monsoon_soul_prompt
+        try:
+            async with httpx.AsyncClient(
+                timeout=float(self._settings.ollama_timeout_seconds)
+            ) as client:
+                response = await client.post(
+                    f"{self._base}/api/chat",
+                    json={
+                        "model": self._settings.ollama_model,
+                        "stream": False,
+                        "messages": [
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": user_prompt},
+                        ],
+                    },
+                )
+                response.raise_for_status()
+                return response.json()["message"]["content"]
+        except (httpx.HTTPError, KeyError, json.JSONDecodeError) as exc:
+            logger.warning("Ollama generate failed: %s", exc)
+            return None
+
+    async def generate_digest(self, *, context_text: str, now_iso: str) -> str | None:
+        system = f"{self._settings.monsoon_soul_prompt}\n\n{DIGEST_INSTRUCTION}"
+        user_prompt = f"Current time: {now_iso}\n\nContext:\n{context_text}"
+        return await self.generate_text(user_prompt=user_prompt, system_prompt=system)
+
+    async def generate_reflect(
+        self, *, topic: str, context_text: str, now_iso: str
+    ) -> str | None:
+        system = f"{self._settings.monsoon_soul_prompt}\n\n{REFLECT_INSTRUCTION}"
+        user_prompt = (
+            f"Topic: {topic}\nCurrent time: {now_iso}\n\nContext:\n{context_text}"
+        )
+        return await self.generate_text(user_prompt=user_prompt, system_prompt=system)
 
     def _parse_json_content(self, content: str) -> ParsedCapture | None:
         try:

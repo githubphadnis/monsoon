@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     workflowy_api_key: str = ""
     workflowy_root_node_id: str = ""
+    workflowy_enabled: bool = True
 
     waha_base_url: str = "http://127.0.0.1:3000"
     waha_api_key: str = ""
@@ -67,6 +68,14 @@ class Settings(BaseSettings):
     @property
     def gmail_configured(self) -> bool:
         return bool(self.gmail_client_id and self.gmail_client_secret and self.gmail_refresh_token)
+
+    @property
+    def workflowy_configured(self) -> bool:
+        return bool(self.workflowy_api_key)
+
+    @property
+    def workflowy_active(self) -> bool:
+        return self.workflowy_enabled and self.workflowy_configured
 
 
 @lru_cache

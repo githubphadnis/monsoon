@@ -27,6 +27,8 @@ DONE_RE = re.compile(r"^(?:done|complete|finish|mark\s+done)\s+#?(\d+)\s*$", re.
 DONE_MARK_RE = re.compile(r"^mark\s+#?(\d+)\s+done\s*$", re.IGNORECASE)
 LIST_RE = re.compile(r"^(?:list|show|tasks?)(?:\s+(\w+))?\s*$", re.IGNORECASE)
 DIGEST_RE = re.compile(r"^(?:digest(?:\s+now)?|summary)\s*$", re.IGNORECASE)
+REFLECT_RE = re.compile(r"^reflect\s+(.+)$", re.IGNORECASE)
+NOTE_ON_TASK_RE = re.compile(r"^note\s+#?(\d+)\s+(.+)$", re.IGNORECASE)
 HELP_RE = re.compile(r"^(?:help|\?|commands)\s*$", re.IGNORECASE)
 
 RELATIVE_RE = re.compile(
@@ -90,6 +92,10 @@ def parse_with_regex(text: str, settings: Settings) -> ParsedCapture | None:
     if DIGEST_RE.match(body):
         return ParsedCapture(kind="digest")
 
+    reflect_match = REFLECT_RE.match(body)
+    if reflect_match:
+        return ParsedCapture(kind="reflect", reflect_topic=reflect_match.group(1).strip())
+
     done_match = DONE_RE.match(body) or DONE_MARK_RE.match(body)
     if done_match:
         return ParsedCapture(kind="done", task_number=int(done_match.group(1)))
@@ -98,6 +104,15 @@ def parse_with_regex(text: str, settings: Settings) -> ParsedCapture | None:
     if list_match:
         bucket = (list_match.group(1) or "today").lower()
         return ParsedCapture(kind="list", status=bucket)
+
+    note_task_match = NOTE_ON_TASK_RE.match(body)
+    if note_task_match:
+        return ParsedCapture(
+            kind="task_note",
+            task_number=int(note_task_match.group(1)),
+            title=note_task_match.group(2).strip(),
+            raw_command=body,
+        )
 
     for pattern, kind in ((TODO_RE, "todo"), (REMIND_RE, "todo"), (NOTE_RE, "note")):
         match = pattern.match(body)

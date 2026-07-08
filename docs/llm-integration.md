@@ -29,13 +29,44 @@ the model supports it.
 
 ## LLM responsibilities (V1 → V1.1)
 
-| Stage | Input | LLM output | Action |
-|-------|-------|------------|--------|
-| **Parse** | Free-text WhatsApp | `{ title, due_at?, priority?, tags? }` | Create/update task |
-| **Classify** | New task + recent context | `{ bucket: inbox\|today\|waiting\|scheduled }` | Route in WorkFlowy |
-| **Enrich digest** | Today's tasks + patterns | Natural-language summary + 1–2 proactive suggestions | `digest` reply |
-| **Nudge** | Overdue / stale waiting | Short reminder copy | Outbound WhatsApp |
-| **Reflect** | Weekly task_events | Patterns ("you defer X often") | Optional weekly note |
+| Stage | Status | Input | LLM output | Action |
+|-------|--------|-------|------------|--------|
+| **Parse** | Shipped | Free-text WhatsApp | JSON task fields | Create task (regex first, Ollama fallback) |
+| **Context slice** | Shipped | Postgres tasks + WA index + entities | SQL bundle text | Feed digest / reflect |
+| **Enrich digest** | Shipped | Context slice | Summary + next steps | `digest` / `summary` (SQL fallback if Ollama down) |
+| **Reflect** | Shipped | Topic + context slice | Active/blockers/next step | `reflect <topic>` |
+| **Classify** | Planned | New task + context | bucket routing | WorkFlowy bucket move |
+| **Nudge** | Planned | Overdue / stale waiting | Short reminder | Scheduler outbound |
+| **Weekly reflect** | Planned | task_events | Patterns | Cron |
+
+## Context slice (shipped 2026-07-08)
+
+`app/services/context_slice.py` — OpenLoomi-inspired **SQL bundle, not graph DB**:
+
+- Open tasks (up to 20)
+- Recent WA messages (up to 30, topic-filtered when requested)
+- Extracted entities (phones, emails, URLs)
+- Char budget default 12k — truncates oldest first
+
+Used by `digest` and `reflect` before every Ollama call.
+
+## WhatsApp commands (LLM)
+
+| Command | Behavior |
+|---------|----------|
+| `digest` / `summary` | Ollama soul + context slice → proactive summary; falls back to task list |
+| `reflect griham` | Topic-filtered slice → reflection on what's active |
+| Free text | Ollama parse when regex misses |
+
+## WorkFlowy integration (shipped 2026-07-08)
+
+Push sync when `WORKFLOWY_API_KEY` set and `WORKFLOWY_ENABLED=true`:
+
+- Task create → todo node under bucket + system children (`id: T{n}`, `source`, `due`, `status`)
+- `note <id> <text>` → context child in WF + `task_context_items` row
+- `done <id>` → complete WF todo node
+
+See [`docs/workflowy-mirror.md`](./workflowy-mirror.md). Reverse sync (WF → Postgres) remains v1.2.
 
 ## Soul prompt (personality)
 
