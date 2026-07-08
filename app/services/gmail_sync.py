@@ -245,6 +245,11 @@ class GmailSyncService:
         self, email: str, display_name: str | None, stats: GmailSyncStats
     ) -> None:
         email = email.lower()
+        for pending in self._db.new:
+            if isinstance(pending, EmailParticipant) and pending.email == email:
+                if display_name and not pending.display_name:
+                    pending.display_name = display_name
+                return
         row = self._db.scalar(select(EmailParticipant).where(EmailParticipant.email == email))
         if row:
             if display_name and not row.display_name:
