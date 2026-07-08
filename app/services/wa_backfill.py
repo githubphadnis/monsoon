@@ -13,10 +13,11 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.integrations.whatsapp.wa_index import chat_fields, message_fields, phone_from_jid
 from app.integrations.whatsapp.waha_client import WahaClient
-from app.models import ExtractedEntity, WaChat, WaContact, WaMessage
+from app.models import ExtractedEntity, SyncState, WaChat, WaContact, WaMessage
 from app.services.wa_entity_extract import extract_entities_from_text
 
 logger = logging.getLogger("monsoon.wa_backfill")
+CHAT_LIST_OFFSET_KEY = "wa_backfill:chat_list_offset"
 
 
 @dataclass
@@ -57,11 +58,14 @@ class WaBackfillService:
             return stats
 
         offset = 0
+        if not full:
+            offset = self._get_chat_list_offset()
         page_size = self._settings.monsoon_wa_backfill_chat_page_size
         processed = 0
 
         while True:
             if max_chats is not None and processed >= max_chats:
+                self._set_chat_list_offset(offset)
                 break
             try:
                 chats = await self._waha.list_chats(limit=page_size, offset=offset)
@@ -71,6 +75,7 @@ class WaBackfillService:
                 break
 
             if not chats:
+                self._set_chat_list_offset(0)
                 break
 
             for raw_chat in chats:
@@ -83,8 +88,10 @@ class WaBackfillService:
                 await self._delay()
 
             if len(chats) < page_size:
+                self._set_chat_list_offset(0)
                 break
             offset += page_size
+            self._set_chat_list_offset(offset)
             await self._delay()
 
         self._db.commit()
@@ -289,6 +296,24 @@ class WaBackfillService:
         ms = self._settings.monsoon_wa_backfill_request_delay_ms
         if ms > 0:
             await asyncio.sleep(ms / 1000.0)
+
+    def _get_chat_list_offset(self) -> int:
+        row = self._db.get(SyncState, CHAT_LIST_OFFSET_KEY)
+        if not row or not row.value:
+            return 0
+        try:
+            return int(row.value.get("offset") or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def _set_chat_list_offset(self, offset: int) -> None:
+        row = self._db.get(SyncState, CHAT_LIST_OFFSET_KEY)
+        payload = {"offset": offset, "updated": datetime.now(UTC).isoformat()}
+        if row:
+            row.value = payload
+        else:
+            self._db.add(SyncState(key=CHAT_LIST_OFFSET_KEY, value=payload))
+        self._db.flush()
 
 
 def index_counts(db: Session, session: str) -> dict[str, int]:

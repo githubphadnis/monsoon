@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     gmail_sync_label: str = ""  # empty = all mail; or INBOX, etc.
     gmail_sync_page_size: int = 50
     gmail_sync_max_pages: int | None = None  # pilot cap; None = no limit
+    monsoon_scheduler_enabled: bool = True
+    monsoon_gmail_sync_interval_minutes: int = 15
+    monsoon_gmail_sync_batch_pages: int = 2
+    monsoon_wa_sync_interval_minutes: int = 30
+    monsoon_wa_sync_batch_chats: int = 2
+    monsoon_workflowy_sync_interval_minutes: int = 20
 
     @field_validator("gmail_sync_max_pages", mode="before")
     @classmethod

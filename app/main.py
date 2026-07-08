@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.db import init_db
 from app.integrations.ollama.client import OllamaClient
 from app.integrations.whatsapp.waha_client import WahaClient
+from app.services.background_jobs import scheduler_status, start_background_jobs, stop_background_jobs
 from app.integrations.whatsapp.webhook_setup import (
     ensure_waha_webhook,
     get_webhook_status,
@@ -28,7 +29,9 @@ async def lifespan(_: FastAPI):
     init_db()
     await ensure_waha_webhook(settings)
     reconciler = asyncio.create_task(webhook_reconciler_loop(settings))
+    background_jobs = start_background_jobs(settings)
     yield
+    await stop_background_jobs(background_jobs)
     reconciler.cancel()
     with suppress(asyncio.CancelledError):
         await reconciler
@@ -98,6 +101,20 @@ def health_wa_index() -> dict[str, object]:
     with SessionLocal() as db:
         counts = index_counts(db, settings.waha_session)
     return {"status": "ok", "session": settings.waha_session, **counts}
+
+
+@app.get("/health/scheduler")
+def health_scheduler() -> dict[str, object]:
+    return {
+        "status": "ok" if settings.monsoon_scheduler_enabled else "disabled",
+        "enabled": settings.monsoon_scheduler_enabled,
+        "gmail_interval_minutes": settings.monsoon_gmail_sync_interval_minutes,
+        "gmail_batch_pages": settings.monsoon_gmail_sync_batch_pages,
+        "wa_interval_minutes": settings.monsoon_wa_sync_interval_minutes,
+        "wa_batch_chats": settings.monsoon_wa_sync_batch_chats,
+        "workflowy_interval_minutes": settings.monsoon_workflowy_sync_interval_minutes,
+        **scheduler_status(),
+    }
 
 
 @app.get("/health/ready")

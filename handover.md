@@ -2,21 +2,21 @@
 
 ## Last worked on
 
-2026-07-08 — Roadmap + GH issues MS-01…08; Gmail email section in context slice (MS-01 partial).
+2026-07-08 — Gmail pilot fixed on notcoolio; background sync loops + WorkFlowy reverse sync implemented locally.
 
 ## Current state / WIP
 
-- **Deployed on notcoolio** — redeployed with title-first LLM replies (`c762e3a`).
+- **Deployed on notcoolio** — Gmail pilot succeeded after dedupe fix (`100` messages, `85` threads, `87` participants`).
 - **WA pilot:** 5 chats, 91 messages indexed (`prakalp` session).
-- **LLM:** `digest`, `reflect`, WorkFlowy push mirror operational.
-- **MS-01 Gmail:** sync code shipped; **operator OAuth + first sync not done yet**.
+- **LLM:** `digest`, `reflect`, WorkFlowy push mirror operational; email is in context slice on `main`.
+- **Local WIP (not yet pushed):** background scheduler loops (`/health/scheduler`), WA chat cursor batching, WorkFlowy reverse sync, task-context section in context slice.
 - **GitHub:** milestones V1.0 / V1.1; issues [#1–#8](https://github.com/githubphadnis/monsoon/issues).
 
 ## Next immediate steps
 
-1. **Operator — finish MS-01 (#1):** Gmail OAuth in Portainer + pilot sync (see `docs/gmail-ingestion.md`, `BREADCRUMBS.md`).
-2. **Code — MS-02 (#2):** WorkFlowy reverse sync.
-3. **Code — MS-03 (#3):** APScheduler (Gmail incremental, WA delta).
+1. **If shipping current local batch:** commit/push, redeploy, then check `/health/scheduler`.
+2. **Operator:** let background Gmail / WA loops trickle and watch counts.
+3. **Next code:** MS-04 reminder scheduler.
 
 ## Environment
 

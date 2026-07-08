@@ -11,7 +11,16 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
 from app.db import Base
-from app.models import ExtractedEntity, EmailMessage, EmailThread, Task, User, WaChat, WaMessage
+from app.models import (
+    ExtractedEntity,
+    EmailMessage,
+    EmailThread,
+    Task,
+    TaskContextItem,
+    User,
+    WaChat,
+    WaMessage,
+)
 from app.models import tables as _tables  # noqa: F401
 from app.schemas.context import ContextSliceRequest
 from app.services.context_slice import build_context_slice
@@ -57,6 +66,7 @@ def test_empty_db_returns_empty_sections(db: Session, settings: Settings, user: 
     result = build_context_slice(db, settings, request)
 
     assert result.tasks_text == ""
+    assert result.task_context_text == ""
     assert result.emails_text == ""
     assert result.wa_messages_text == ""
     assert result.entities_text == ""
@@ -93,6 +103,30 @@ def test_open_tasks_appear_in_output(db: Session, settings: Settings, user: User
     assert "notes:urgent" in result.tasks_text
     assert "done task" not in result.tasks_text
     assert result.char_count > 0
+
+
+def test_task_context_appears_in_output(db: Session, settings: Settings, user: User):
+    task = Task(
+        user_id=user.id,
+        display_number=4,
+        title="Book hotel in White Town",
+        status="today",
+    )
+    db.add(task)
+    db.flush()
+    db.add(
+        TaskContextItem(
+            task_id=task.id,
+            source="workflowy",
+            body="research: French quarter hotels near promenade",
+        )
+    )
+    db.commit()
+
+    result = build_context_slice(db, settings, ContextSliceRequest(user_id=user.id))
+
+    assert "[Book hotel in White Town]" in result.task_context_text
+    assert "French quarter hotels" in result.task_context_text
 
 
 def test_topic_filter_reduces_wa_lines(db: Session, settings: Settings, user: User):

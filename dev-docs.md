@@ -15,6 +15,8 @@
 | 2026-07-08 | WorkFlowy push mirror v1 | Task create → WF todo + system children; `note <id>` → context child; `task_context_items` table |
 | 2026-07-08 | Roadmap MS-01…08 + GH issues | Agreed build order: Gmail → WF reverse → scheduler; issues #1–#8, milestones V1.0/V1.1 |
 | 2026-07-08 | Email in context slice | `digest`/`reflect` include indexed Gmail (topic filter + entity linkage) |
+| 2026-07-08 | Low-impact background sync loops | Small Gmail / WA batches in-app avoid heavy one-shot syncs on notcoolio |
+| 2026-07-08 | WorkFlowy reverse sync feeds task context | Non-system child bullets reconcile into `task_context_items`, then into LLM context |
 
 ## WorkFlowy — fractal task + context
 

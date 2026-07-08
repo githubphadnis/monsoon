@@ -13,6 +13,7 @@ class ContextSliceRequest(BaseModel):
 
 class ContextSlice(BaseModel):
     tasks_text: str = ""
+    task_context_text: str = ""
     emails_text: str = ""
     wa_messages_text: str = ""
     entities_text: str = ""

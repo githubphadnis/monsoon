@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import Settings
@@ -24,6 +25,7 @@ BUCKETS: dict[str, str] = {
 }
 
 SYNC_STATE_KEY = "workflowy_bucket_nodes"
+SYSTEM_PREFIXES = ("id:", "source:", "due:", "status:")
 
 
 class WorkFlowyMirrorService:
@@ -168,3 +170,72 @@ class WorkFlowyMirrorService:
         if not self.active or not task.workflowy_node_id:
             return False
         return await self._client.complete_node(task.workflowy_node_id)
+
+    async def sync_task_context(self, task: Task) -> int:
+        """Pull non-system child bullets from WorkFlowy into task_context_items."""
+        if not self.active or not task.workflowy_node_id:
+            return 0
+
+        nodes = await self._client.list_nodes(task.workflowy_node_id)
+        synced = 0
+        for node in nodes:
+            node_id = str(node.get("id") or "")
+            body = (node.get("name") or "").strip()
+            if not node_id or not body:
+                continue
+            if body.lower().startswith(SYSTEM_PREFIXES):
+                continue
+
+            item = self._db.scalar(
+                select(TaskContextItem).where(
+                    TaskContextItem.task_id == task.id,
+                    TaskContextItem.workflowy_node_id == node_id,
+                )
+            )
+            if item:
+                if item.body != body:
+                    item.body = body
+                synced += 1
+                continue
+
+            existing = self._db.scalar(
+                select(TaskContextItem).where(
+                    TaskContextItem.task_id == task.id,
+                    TaskContextItem.body == body,
+                )
+            )
+            if existing:
+                if not existing.workflowy_node_id:
+                    existing.workflowy_node_id = node_id
+                if existing.source == "monsoon":
+                    existing.source = "workflowy"
+                synced += 1
+                continue
+
+            self._db.add(
+                TaskContextItem(
+                    task_id=task.id,
+                    workflowy_node_id=node_id,
+                    source="workflowy",
+                    body=body,
+                )
+            )
+            synced += 1
+
+        self._db.flush()
+        return synced
+
+    async def sync_user_context(self, user_id) -> int:
+        """Pull context children for all WorkFlowy-linked tasks for a user."""
+        tasks = list(
+            self._db.scalars(
+                select(Task).where(
+                    Task.user_id == user_id,
+                    Task.workflowy_node_id.is_not(None),
+                )
+            )
+        )
+        synced = 0
+        for task in tasks:
+            synced += await self.sync_task_context(task)
+        return synced
