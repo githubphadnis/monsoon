@@ -27,6 +27,12 @@ HISTORY_KEY = "gmail:history_id"
 PAGE_TOKEN_KEY = "gmail:list_page_token"
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
 @dataclass
 class GmailSyncStats:
     threads_upserted: int = 0
@@ -224,7 +230,9 @@ class GmailSyncService:
             )
             stats.entities_inserted += 1
 
-        if received_at and (not thread.last_message_at or received_at > thread.last_message_at):
+        if received_at and (
+            not thread.last_message_at or _as_utc(received_at) > _as_utc(thread.last_message_at)
+        ):
             thread.last_message_at = received_at
         if subject and not thread.subject:
             thread.subject = subject

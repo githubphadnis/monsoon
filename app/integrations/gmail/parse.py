@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-from datetime import datetime
+from datetime import UTC, datetime
 from email.utils import parseaddr, parsedate_to_datetime
 
 
@@ -36,9 +36,13 @@ def parse_date(headers: dict[str, str]) -> datetime | None:
     if not raw:
         return None
     try:
-        return parsedate_to_datetime(raw)
+        dt = parsedate_to_datetime(raw)
     except (TypeError, ValueError, IndexError):
         return None
+    # Gmail Date headers may be offset-naive; always store/compare as UTC-aware.
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 def decode_body(payload: dict) -> str | None:
