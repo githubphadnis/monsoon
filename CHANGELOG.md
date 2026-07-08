@@ -9,7 +9,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- WAHA `list_chats`: use `sortBy=conversationTimestamp` (was invalid `messageTimestamp` → 400).
+- WA backfill: duplicate `wa_contacts` insert for same JID (e.g. `status@broadcast`) when chat + messages upsert before flush — in-memory JID cache.
 - Auto-enable NOWEB `store` on WAHA session config for chat/message history APIs.
 - Empty `GMAIL_SYNC_MAX_PAGES` env no longer crashes app startup (treat as unset).
 - Container DNS on `app` service for WAHA WhatsApp connectivity (`EAI_AGAIN web.whatsapp.com`).

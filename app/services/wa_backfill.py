@@ -36,6 +36,8 @@ class WaBackfillService:
         self._settings = settings
         self._waha = WahaClient(settings)
         self._session = settings.waha_session
+        # JIDs inserted/loaded this run — SQLAlchemy flush batches hide pending rows from SELECT.
+        self._contact_by_jid: dict[str, WaContact] = {}
 
     async def run(
         self,
@@ -45,6 +47,7 @@ class WaBackfillService:
         chat_id: str | None = None,
     ) -> BackfillStats:
         stats = BackfillStats()
+        self._contact_by_jid.clear()
         if chat_id:
             chat = await self._upsert_chat({"id": chat_id}, stats)
             if chat:
@@ -230,29 +233,35 @@ class WaBackfillService:
         if not jid:
             return
 
-        phone = phone_from_jid(jid)
-        contact = self._db.scalar(
-            select(WaContact).where(WaContact.session == self._session, WaContact.jid == jid)
-        )
+        contact = self._contact_by_jid.get(jid)
+        if contact is None:
+            contact = self._db.scalar(
+                select(WaContact).where(WaContact.session == self._session, WaContact.jid == jid)
+            )
         if contact:
+            self._contact_by_jid[jid] = contact
             if display_name and not contact.display_name:
                 contact.display_name = display_name
-            if phone and not contact.phone:
-                contact.phone = phone
+            if phone := phone_from_jid(jid):
+                if not contact.phone:
+                    contact.phone = phone
             contact.last_seen_at = datetime.now(UTC)
             contact.raw = raw
-        else:
-            contact = WaContact(
-                session=self._session,
-                jid=jid,
-                phone=phone,
-                display_name=display_name,
-                contact_type=contact_type,
-                source="chat_derived",
-                raw=raw,
-            )
-            self._db.add(contact)
-            stats.contacts_upserted += 1
+            return
+
+        phone = phone_from_jid(jid)
+        contact = WaContact(
+            session=self._session,
+            jid=jid,
+            phone=phone,
+            display_name=display_name,
+            contact_type=contact_type,
+            source="chat_derived",
+            raw=raw,
+        )
+        self._db.add(contact)
+        self._contact_by_jid[jid] = contact
+        stats.contacts_upserted += 1
 
     def _extract_entities(self, msg_id: str, body: str, stats: BackfillStats) -> None:
         for entity_type, value in extract_entities_from_text(body):
