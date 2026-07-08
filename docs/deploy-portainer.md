@@ -203,12 +203,24 @@ curl -s http://127.0.0.1:8080/health/ready   # includes ollama_reachable
 `digest` and `reflect` need **Ollama reachable from inside `monsoon-app`**. Default env:
 `OLLAMA_BASE_URL=http://lenai:11434`.
 
-**Docker cannot resolve MagicDNS hostname `lenai` by default** — if `ollama_reachable` is
-false, use lenai's **Tailscale IP** (or LAN IP) in Portainer:
+**The problem is Docker DNS, not lenai's location.** The `monsoon-app` container runs on
+Docker's bridge network. Hostname `lenai` (mDNS, router DNS, or Tailscale MagicDNS) often
+**does not resolve inside the container**, even when `curl http://lenai:11434` works on
+the notcoolio **host**.
+
+**Prefer LAN IP when both machines are on the same subnet** (lowest latency, stays local):
 
 ```text
-OLLAMA_BASE_URL=http://100.x.y.z:11434
+OLLAMA_BASE_URL=http://192.168.x.x:11434
 ```
+
+Find lenai's LAN address on lenai: `hostname -I` or your router's DHCP table.
+
+Use **Tailscale IP** (`100.x.x.x`) only when lenai is **not** reachable via LAN from
+notcoolio (remote-only, or different VLANs). Tailscale often uses direct LAN paths when
+both nodes are local, but plain LAN IP is simpler when it works.
+
+Alternative: add `extra_hosts` on the `app` service mapping `lenai` → LAN IP (compose change).
 
 On **lenai**, Ollama must listen on all interfaces (not only localhost):
 
@@ -238,7 +250,7 @@ except Exception as e:
 |---------|-----|
 | `digest` shows `*Digest*` + `#N task` list only | SQL fallback — Ollama down |
 | `reflect` → "Try again when Ollama is reachable" | Same — fix `OLLAMA_BASE_URL` |
-| `FAIL [Errno -2] Name or service not known` | Use Tailscale/LAN IP, not hostname `lenai` |
+| `FAIL [Errno -2] Name or service not known` | Hostname not visible in container — use **LAN IP** (preferred) or Tailscale IP |
 | `Connection refused` | `OLLAMA_HOST=0.0.0.0` on lenai; open firewall if needed |
 | `404` on model | Set `OLLAMA_MODEL` to a model pulled on lenai (`ollama list`) |
 

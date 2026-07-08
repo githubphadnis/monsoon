@@ -37,8 +37,9 @@ GMAIL_SYNC_PAGE_SIZE=50
 # Omit GMAIL_SYNC_MAX_PAGES until Gmail pilot (empty value crashes older builds)
 
 # --- Ollama on lenai ---
-# Use Tailscale/LAN IP if hostname lenai does not resolve inside Docker:
-# OLLAMA_BASE_URL=http://100.x.y.z:11434
+# Prefer lenai LAN IP if notcoolio and lenai are on the same subnet (lowest latency).
+# Hostname lenai often fails inside Docker — use IP, not MagicDNS/mDNS name.
+# OLLAMA_BASE_URL=http://192.168.x.x:11434
 OLLAMA_BASE_URL=http://lenai:11434
 OLLAMA_MODEL=llama3.2
 OLLAMA_TIMEOUT_SECONDS=60
