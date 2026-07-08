@@ -193,7 +193,56 @@ curl -s http://127.0.0.1:8080/health/live
 curl -s http://127.0.0.1:8080/health/db
 curl -s http://127.0.0.1:8080/health/webhook
 curl -s http://127.0.0.1:8080/health/wa-index
+curl -s http://127.0.0.1:8080/health/ready   # includes ollama_reachable
 ```
+
+---
+
+## 8. Ollama on lenai (LLM digest / reflect)
+
+`digest` and `reflect` need **Ollama reachable from inside `monsoon-app`**. Default env:
+`OLLAMA_BASE_URL=http://lenai:11434`.
+
+**Docker cannot resolve MagicDNS hostname `lenai` by default** — if `ollama_reachable` is
+false, use lenai's **Tailscale IP** (or LAN IP) in Portainer:
+
+```text
+OLLAMA_BASE_URL=http://100.x.y.z:11434
+```
+
+On **lenai**, Ollama must listen on all interfaces (not only localhost):
+
+```bash
+# /etc/systemd/system/ollama.service.d/override.conf
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0:11434"
+```
+
+### Diagnose on notcoolio
+
+```bash
+curl -s http://127.0.0.1:8080/health/ready | python3 -m json.tool
+docker exec monsoon-app printenv OLLAMA_BASE_URL OLLAMA_MODEL
+docker exec monsoon-app python -c "
+import httpx, os
+u = os.environ['OLLAMA_BASE_URL'].rstrip('/') + '/api/tags'
+try:
+    r = httpx.get(u, timeout=5)
+    print('OK', r.status_code)
+except Exception as e:
+    print('FAIL', e)
+"
+```
+
+| Symptom | Fix |
+|---------|-----|
+| `digest` shows `*Digest*` + `#N task` list only | SQL fallback — Ollama down |
+| `reflect` → "Try again when Ollama is reachable" | Same — fix `OLLAMA_BASE_URL` |
+| `FAIL [Errno -2] Name or service not known` | Use Tailscale/LAN IP, not hostname `lenai` |
+| `Connection refused` | `OLLAMA_HOST=0.0.0.0` on lenai; open firewall if needed |
+| `404` on model | Set `OLLAMA_MODEL` to a model pulled on lenai (`ollama list`) |
+
+After fixing Portainer env → **redeploy stack** → retry `digest` / `reflect griham`.
 
 ---
 

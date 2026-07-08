@@ -90,7 +90,7 @@ same task node — see `docs/workflowy-mirror.md`.
 | 2026-07-07 | Self-chat bot reply loop | `outbound_guard.py` + commit outbound before echo |
 | 2026-07-07 | `EAI_AGAIN web.whatsapp.com` | Explicit DNS on `app` in compose (`127.0.0.11`, `1.1.1.1`, `8.8.8.8`) |
 | 2026-07-07 | `gmail_sync_max_pages` validation on `''` | Pydantic coerces empty string → `None` |
-| 2026-07-08 | `uq_wa_contacts_session_jid` on `status@broadcast` during backfill | Same JID upserted from chat + many messages before flush; in-memory contact cache per run |
+| 2026-07-08 | `digest`/`reflect` SQL fallback on notcoolio | `OLLAMA_BASE_URL=http://lenai:11434` not reachable from Docker — use lenai Tailscale IP |
 | 2026-07-07 | `list_chats` 400 Bad Request | `sortBy=conversationTimestamp` (not `messageTimestamp`); enable NOWEB store |
 
 ## Patterns to avoid
