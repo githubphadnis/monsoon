@@ -10,9 +10,12 @@ Check `STATUS.md` before each step. Report back to Cursor with: **step number + 
 
 ## Phase 0 — Cursor already did (you do nothing)
 
-- [x] Committed parallel-work docs on `main`
-- [x] Created branch `feature/llm-phase-a` (integrator)
-- [x] Created worktrees `monsoon-oc01`, `monsoon-oc02`
+- [x] Committed parallel-work docs on `main` (`f2585f3`)
+- [x] Created branch `feature/llm-phase-a` in `C:\projects\monsoon`
+- [x] Created worktrees:
+  - `C:\projects\monsoon-oc01` → branch `oc/01-context-slice`
+  - `C:\projects\monsoon-oc02` → branch `oc/02-ollama-contributions`
+- [x] `monsoon-oc03` **not** created yet (waits for OC-01 + OC-02 merge)
 
 ---
 
