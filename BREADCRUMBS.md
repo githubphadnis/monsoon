@@ -1,29 +1,23 @@
 # BREADCRUMBS — monsoon
 
-**Updated:** 2026-07-08 07:05
+**Updated:** 2026-07-08 07:20
 
-## Your only action
+## Next action (operator)
 
-**WA backfill on notcoolio** (Phase 3):
+1. **Portainer:** Pull/redeploy `monsoon-app` (`ghcr.io/githubphadnis/monsoon:main` @ `54c623d`)
+2. **Retry WA backfill:**
+   ```bash
+   docker exec monsoon-app python infra/scripts/wa_backfill.py --max-chats 5
+   curl -s http://127.0.0.1:8080/health/wa-index | python3 -m json.tool
+   ```
+3. **Smoke:** `digest`, `reflect griham`, `todo smoke test`
 
-```bash
-curl -s http://127.0.0.1:8080/health/webhook | python3 -m json.tool
-docker exec monsoon-app python infra/scripts/wa_backfill.py --max-chats 5
-curl -s http://127.0.0.1:8080/health/wa-index | python3 -m json.tool
-```
+## Shipped on main
 
-Report: `Phase 3 done` + wa-index JSON.
+- LLM Phase A (context slice, digest, reflect)
+- WorkFlowy push mirror
+- WA backfill `status@broadcast` contact dedupe fix
 
-**Skip OpenCode** — Cursor shipped OC-01/02/03 + WorkFlowy on `feature/llm-phase-a`.
+## Branch
 
-## Cursor state
-
-- `feature/llm-phase-a` — LLM digest, reflect, context slice, WorkFlowy push, 58 tests pass
-- Pending: commit, your WA pilot, deploy branch to notcoolio
-
-## Smoke after deploy
-
-- `digest`
-- `reflect griham`
-- `todo smoke test`
-- `note 1 follow-up text` (if task #1 exists)
+- `main` @ `54c623d` — pushed to origin; GHCR build should run

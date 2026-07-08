@@ -23,9 +23,9 @@
 
 ## Next immediate steps
 
-1. **You:** WA backfill `--max-chats 5` on notcoolio (only operator task).
-2. **Cursor:** merge `feature/llm-phase-a` → `main`, push, Portainer pull.
-3. Smoke: `digest`, `reflect <topic>`, `todo` + WorkFlowy mirror (if API key set).
+1. **Portainer:** Pull/redeploy `main` (`54c623d`) — GHCR image building now.
+2. **Retry:** `wa_backfill.py --max-chats 5` on notcoolio.
+3. Smoke: `digest`, `reflect <topic>`, WorkFlowy (if API key set).
 
 ## Environment
 
