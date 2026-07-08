@@ -48,6 +48,7 @@ class WaBackfillService:
     ) -> BackfillStats:
         stats = BackfillStats()
         self._contact_by_jid.clear()
+        self._preload_contacts()
         if chat_id:
             chat = await self._upsert_chat({"id": chat_id}, stats)
             if chat:
@@ -207,7 +208,7 @@ class WaBackfillService:
         self._db.add(row)
         stats.messages_inserted += 1
 
-        if fields["from_id"]:
+        if fields["from_id"] and fields["from_id"] != chat.chat_id:
             self._upsert_contact(
                 jid=fields["from_id"],
                 display_name=None,
@@ -262,6 +263,14 @@ class WaBackfillService:
         self._db.add(contact)
         self._contact_by_jid[jid] = contact
         stats.contacts_upserted += 1
+
+    def _preload_contacts(self) -> None:
+        """Seed cache from DB so reruns and pending flushes never duplicate-insert."""
+        rows = self._db.scalars(
+            select(WaContact).where(WaContact.session == self._session)
+        )
+        for contact in rows:
+            self._contact_by_jid[contact.jid] = contact
 
     def _extract_entities(self, msg_id: str, body: str, stats: BackfillStats) -> None:
         for entity_type, value in extract_entities_from_text(body):
