@@ -1,23 +1,25 @@
 # BREADCRUMBS — monsoon
 
-**Updated:** 2026-07-08 07:20
+**Updated:** 2026-07-08 07:36
 
-## Next action (operator)
+## WA pilot — DONE
 
-1. **Portainer:** Pull/redeploy `monsoon-app` (`ghcr.io/githubphadnis/monsoon:main` @ `54c623d`)
-2. **Retry WA backfill:**
-   ```bash
-   docker exec monsoon-app python infra/scripts/wa_backfill.py --max-chats 5
-   curl -s http://127.0.0.1:8080/health/wa-index | python3 -m json.tool
-   ```
-3. **Smoke:** `digest`, `reflect griham`, `todo smoke test`
+5 chats, 91 messages indexed on notcoolio (`prakalp` session). Backfill fix deployed (`dac7ce6`).
 
-## Shipped on main
+## Next action
 
-- LLM Phase A (context slice, digest, reflect)
-- WorkFlowy push mirror
-- WA backfill `status@broadcast` contact dedupe fix
+WhatsApp self-chat smoke on notcoolio stack:
+
+1. `digest` — should use Ollama + WA context (or SQL fallback if lenai down)
+2. `reflect <topic>` — pick a topic from your indexed chats
+3. `todo smoke test` — capture still works
+4. Optional: set `WORKFLOWY_API_KEY` + `WORKFLOWY_ROOT_NODE_ID` in Portainer for mirror
+
+## Defer
+
+- Full WA backfill (`--full`) until volume hardening
+- Gmail OAuth
 
 ## Branch
 
-- `main` @ `54c623d` — pushed to origin; GHCR build should run
+- `main` @ `dac7ce6` — CI + GHCR green

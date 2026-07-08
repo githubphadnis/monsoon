@@ -9,7 +9,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- WA backfill: duplicate `wa_contacts` insert for same JID (e.g. `status@broadcast`) when chat + messages upsert before flush — in-memory JID cache.
+- WA backfill: duplicate `wa_contacts` for `status@broadcast` — contact cache + preload + skip self JID.
+- CI: unused import in `workflowy_mirror.py` blocked GHCR publish.
 - Auto-enable NOWEB `store` on WAHA session config for chat/message history APIs.
 - Empty `GMAIL_SYNC_MAX_PAGES` env no longer crashes app startup (treat as unset).
 - Container DNS on `app` service for WAHA WhatsApp connectivity (`EAI_AGAIN web.whatsapp.com`).

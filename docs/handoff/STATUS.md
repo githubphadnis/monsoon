@@ -1,27 +1,23 @@
 # Handoff lock board
 
-**Updated:** 2026-07-08 07:05 — Cursor shipped LLM Phase A on integrator
+**Updated:** 2026-07-08 07:36 — WA pilot **SUCCESS** on notcoolio
 
-**Branch:** `feature/llm-phase-a` @ `C:\projects\monsoon` · **58 pytest passing**
+## Operator
 
-## Tracks
+| Task | Status |
+|------|--------|
+| WA backfill `--max-chats 5` | **DONE** — 5 chats, 91 messages, 12 contacts, 7 entities |
+| Deploy `main` @ `dac7ce6` | **DONE** |
+| WhatsApp smoke (`digest`, `reflect`, `todo`) | **NEXT** |
 
-| ID | Status | Agent | Notes |
-|----|--------|-------|-------|
-| OC-01 context slice | **DONE (Cursor)** | Cursor | `context_slice.py` — skip OpenCode unless you want diff review |
-| OC-02 Ollama contributions | **DONE (Cursor)** | Cursor | `generate_digest`, `generate_reflect` |
-| OC-03 capture wiring | **DONE (Cursor)** | Cursor | `reflect`, LLM digest, WF hooks |
-| CUR-WF WorkFlowy mirror | **DONE (Cursor)** | Cursor | client + mirror + `task_context_items` |
-| Operator WA backfill | **YOUR TURN** | You | notcoolio `--max-chats 5` only |
+## Shipped on main
 
-## Operator — only action left
+- LLM Phase A (context slice, digest, reflect)
+- WorkFlowy push mirror
+- WA backfill contact dedupe + preload
 
-SSH notcoolio → run Phase 3 from `OPERATOR-RUNBOOK.md` (WA backfill pilot).
+## Index snapshot (notcoolio)
 
-OpenCode Phases 1–2–5: **SKIP** (Cursor implemented on integrator).
-
-## Merge log
-
-| When | What | pytest |
-|------|------|--------|
-| 2026-07-08 | LLM Phase A + WorkFlowy push on `feature/llm-phase-a` | 58 passed |
+```json
+{"chats": 5, "messages": 91, "contacts": 12, "entities": 7, "chats_complete": 5}
+```

@@ -6,26 +6,16 @@
 
 ## Current state / WIP
 
-- **Deployed on notcoolio** via Portainer (`docker-compose.portainer.yml`).
-- **WAHA:** dedicated monsoon instance, NOWEB engine, session **`prakalp`**, sidecar networking (`network_mode: service:app`).
-- **App:** FastAPI + Postgres; webhook auto-config + reconciler; capture + replies working when session/env aligned.
-- **Shipped in code (operator validating):** WA index backfill, Gmail sync, Postgres cleanup scripts, outbound echo guard, keyword aliases.
-- **WA backfill pilot:** hit `400` on `list_chats` (wrong `sortBy`) — **fixed on `main`**; operator needs redeploy + retry `--max-chats 5`.
-
-## Broken / watch
-
-| Item | Status |
-|------|--------|
-| WAHA `EAI_AGAIN web.whatsapp.com` | Fixed in compose (explicit DNS on `app`); redeploy if recurs |
-| App crash `gmail_sync_max_pages ''` | Fixed — empty optional int treated as unset |
-| `list_chats` 400 | Fixed — use `conversationTimestamp`; enable NOWEB store on session |
-| Full WA backfill on huge groups | **Not hardened** — pilot only until batch commits / caps / skip-groups |
+- **Deployed on notcoolio** via Portainer (`docker-compose.portainer.yml`) @ `dac7ce6`.
+- **WA pilot SUCCESS:** 5 chats, 91 messages, 12 contacts, 7 entities (`--max-chats 5`).
+- **LLM Phase A on main:** context slice, `digest`, `reflect`, WorkFlowy push mirror.
+- **WAHA:** session `prakalp`, NOWEB store enabled, webhook ok.
 
 ## Next immediate steps
 
-1. **Portainer:** Pull/redeploy `main` (`54c623d`) — GHCR image building now.
-2. **Retry:** `wa_backfill.py --max-chats 5` on notcoolio.
-3. Smoke: `digest`, `reflect <topic>`, WorkFlowy (if API key set).
+1. WhatsApp smoke: `digest`, `reflect <topic>`, `todo smoke test`.
+2. Optional: WorkFlowy env in Portainer (`WORKFLOWY_API_KEY`, `WORKFLOWY_ROOT_NODE_ID`).
+3. Defer full backfill until volume hardening.
 
 ## Environment
 
