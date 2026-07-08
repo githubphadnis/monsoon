@@ -110,9 +110,12 @@ def health_scheduler() -> dict[str, object]:
         "enabled": settings.monsoon_scheduler_enabled,
         "gmail_interval_minutes": settings.monsoon_gmail_sync_interval_minutes,
         "gmail_batch_pages": settings.monsoon_gmail_sync_batch_pages,
+        "gmail_include_spam_trash": settings.gmail_include_spam_trash,
+        "gmail_sync_label": settings.gmail_sync_label or "ALL_MAIL",
         "wa_interval_minutes": settings.monsoon_wa_sync_interval_minutes,
         "wa_batch_chats": settings.monsoon_wa_sync_batch_chats,
         "workflowy_interval_minutes": settings.monsoon_workflowy_sync_interval_minutes,
+        "reminder_interval_minutes": settings.monsoon_reminder_interval_minutes,
         **scheduler_status(),
     }
 

@@ -49,15 +49,23 @@ class GmailSyncService:
             self._set_sync_value(PAGE_TOKEN_KEY, None)
             self._set_sync_value(HISTORY_KEY, None)
 
-        if self._get_sync_value(HISTORY_KEY) and not full:
+        # Resume incomplete list sync even if a historyId was saved mid-pilot.
+        list_in_progress = bool(self._get_sync_value(PAGE_TOKEN_KEY))
+        if list_in_progress and not full:
+            self._sync_list(stats, max_pages=max_pages or self._settings.gmail_sync_max_pages)
+        elif self._get_sync_value(HISTORY_KEY) and not full:
             self._sync_history(stats)
         else:
             self._sync_list(stats, max_pages=max_pages or self._settings.gmail_sync_max_pages)
 
-        profile = self._service.users().getProfile(userId=self._settings.gmail_user_id).execute()
-        history_id = profile.get("historyId")
-        if history_id:
-            self._set_sync_value(HISTORY_KEY, str(history_id))
+        # Only advance history cursor when the mailbox list pass is finished.
+        if not self._get_sync_value(PAGE_TOKEN_KEY):
+            profile = self._service.users().getProfile(
+                userId=self._settings.gmail_user_id
+            ).execute()
+            history_id = profile.get("historyId")
+            if history_id:
+                self._set_sync_value(HISTORY_KEY, str(history_id))
 
         self._db.commit()
         return stats
@@ -75,10 +83,13 @@ class GmailSyncService:
             params: dict = {
                 "userId": self._settings.gmail_user_id,
                 "maxResults": page_size,
+                # False = All Mail including Archive; Spam/Trash only if enabled.
+                "includeSpamTrash": bool(self._settings.gmail_include_spam_trash),
             }
             if page_token:
                 params["pageToken"] = page_token
             if self._settings.gmail_sync_label:
+                # INBOX only excludes Archive — leave empty for full mailbox index.
                 params["labelIds"] = [self._settings.gmail_sync_label]
 
             try:

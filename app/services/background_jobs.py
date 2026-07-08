@@ -1,4 +1,4 @@
-"""Background sync loops for Gmail, WhatsApp backfill, and WorkFlowy reconciliation."""
+"""Background sync loops for Gmail, WhatsApp backfill, WorkFlowy, and reminders."""
 
 from __future__ import annotations
 
@@ -7,10 +7,13 @@ import logging
 from contextlib import suppress
 from datetime import UTC, datetime
 
+from sqlalchemy import select
+
 from app.config import Settings
 from app.db import SessionLocal
-from app.models import SyncState
+from app.models import SyncState, User
 from app.services.gmail_sync import GmailSyncService
+from app.services.reminder_service import ReminderService
 from app.services.wa_backfill import WaBackfillService
 from app.services.workflowy_mirror import WorkFlowyMirrorService
 
@@ -19,6 +22,7 @@ logger = logging.getLogger("monsoon.background")
 GMAIL_STATUS_KEY = "scheduler:gmail"
 WA_STATUS_KEY = "scheduler:wa"
 WORKFLOWY_STATUS_KEY = "scheduler:workflowy"
+REMINDER_STATUS_KEY = "scheduler:reminders"
 
 
 def _set_status(key: str, **fields: object) -> None:
@@ -35,7 +39,12 @@ def _set_status(key: str, **fields: object) -> None:
 def scheduler_status() -> dict[str, object]:
     with SessionLocal() as db:
         result: dict[str, object] = {}
-        for key in (GMAIL_STATUS_KEY, WA_STATUS_KEY, WORKFLOWY_STATUS_KEY):
+        for key in (
+            GMAIL_STATUS_KEY,
+            WA_STATUS_KEY,
+            WORKFLOWY_STATUS_KEY,
+            REMINDER_STATUS_KEY,
+        ):
             row = db.get(SyncState, key)
             result[key.split(":")[1]] = row.value if row and row.value else None
         return result
@@ -65,6 +74,11 @@ async def _run_gmail_batch(settings: Settings) -> None:
     try:
         stats = await asyncio.to_thread(_sync)
         _set_status(GMAIL_STATUS_KEY, status="ok", **stats)
+        logger.info(
+            "Background Gmail batch: inserted=%s skipped=%s",
+            stats.get("messages_inserted"),
+            stats.get("messages_skipped"),
+        )
     except Exception as exc:
         logger.exception("Background Gmail sync failed")
         _set_status(GMAIL_STATUS_KEY, status="error", error=str(exc))
@@ -89,6 +103,11 @@ async def _run_wa_batch(settings: Settings) -> None:
             entities_inserted=stats.entities_inserted,
             errors=list(stats.errors),
         )
+        logger.info(
+            "Background WA batch: chats=%s msgs=%s",
+            stats.chats_synced + stats.chats_updated,
+            stats.messages_inserted,
+        )
     except Exception as exc:
         logger.exception("Background WA sync failed")
         _set_status(WA_STATUS_KEY, status="error", error=str(exc))
@@ -99,12 +118,9 @@ async def _run_workflowy_sync(settings: Settings) -> None:
         _set_status(WORKFLOWY_STATUS_KEY, status="skipped", reason="not_configured")
         return
 
-    def _users() -> list[object]:
-        from app.models import User
-        from sqlalchemy import select
-
+    def _users() -> list[User]:
         with SessionLocal() as db:
-            return list(db.scalars(select(User).where(User.workflowy_root_node_id.is_not(None))))
+            return list(db.scalars(select(User)))
 
     users = await asyncio.to_thread(_users)
     synced = 0
@@ -121,10 +137,40 @@ async def _run_workflowy_sync(settings: Settings) -> None:
         _set_status(WORKFLOWY_STATUS_KEY, status="error", error=str(exc), tasks_synced=synced)
 
 
+async def _run_reminders(settings: Settings) -> None:
+    _set_status(REMINDER_STATUS_KEY, status="running")
+    try:
+        with SessionLocal() as db:
+            stats = await ReminderService(db, settings).send_due()
+        _set_status(
+            REMINDER_STATUS_KEY,
+            status="ok",
+            due_found=stats.due_found,
+            sent=stats.sent,
+            failed=stats.failed,
+            errors=list(stats.errors),
+        )
+        if stats.sent or stats.failed:
+            logger.info(
+                "Reminders: due=%s sent=%s failed=%s",
+                stats.due_found,
+                stats.sent,
+                stats.failed,
+            )
+    except Exception as exc:
+        logger.exception("Background reminders failed")
+        _set_status(REMINDER_STATUS_KEY, status="error", error=str(exc))
+
+
 async def _loop(name: str, interval_minutes: int, runner) -> None:
-    seconds = max(60, interval_minutes * 60)
+    # Allow sub-minute for reminders (interval expressed in minutes, fractional OK later)
+    seconds = max(30, int(interval_minutes * 60))
+    # Run immediately once, then sleep — catch-up starts as soon as container is up.
     while True:
-        await runner()
+        try:
+            await runner()
+        except Exception:
+            logger.exception("Background loop %s crashed; will retry", name)
         logger.debug("Background loop %s sleeping for %ss", name, seconds)
         await asyncio.sleep(seconds)
 
@@ -134,6 +180,14 @@ def start_background_jobs(settings: Settings) -> list[asyncio.Task]:
         logger.info("Background scheduler disabled by config")
         return []
 
+    logger.info(
+        "Starting background jobs: gmail=%sm/%spages wa=%sm/%schats reminders=%sm",
+        settings.monsoon_gmail_sync_interval_minutes,
+        settings.monsoon_gmail_sync_batch_pages,
+        settings.monsoon_wa_sync_interval_minutes,
+        settings.monsoon_wa_sync_batch_chats,
+        settings.monsoon_reminder_interval_minutes,
+    )
     return [
         asyncio.create_task(
             _loop("gmail", settings.monsoon_gmail_sync_interval_minutes, lambda: _run_gmail_batch(settings))
@@ -146,6 +200,13 @@ def start_background_jobs(settings: Settings) -> list[asyncio.Task]:
                 "workflowy",
                 settings.monsoon_workflowy_sync_interval_minutes,
                 lambda: _run_workflowy_sync(settings),
+            )
+        ),
+        asyncio.create_task(
+            _loop(
+                "reminders",
+                settings.monsoon_reminder_interval_minutes,
+                lambda: _run_reminders(settings),
             )
         ),
     ]

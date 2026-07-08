@@ -1,25 +1,37 @@
-# Gmail ingestion (Priority 2)
+# Gmail ingestion
 
-Sync your mailbox into Postgres for the context atlas (threads, messages,
-participants, regex entity extract).
+Sync mailbox into Postgres for the context atlas (threads, messages, participants,
+entity extract). Background scheduler continues indexing in small batches until done.
+
+## Mailbox coverage
+
+| Mode | Env | What gets indexed |
+|------|-----|-------------------|
+| **All mail (recommended)** | Leave `GMAIL_SYNC_LABEL` **empty / unset** | Inbox + **Archive** + sent + etc. Everything except Spam/Trash |
+| Inbox only | `GMAIL_SYNC_LABEL=INBOX` | Inbox only — archived mail skipped |
+| Include Spam/Trash | `GMAIL_INCLUDE_SPAM_TRASH=true` | Also Spam and Trash |
+
+**Operator note:** for a complete personal atlas, use empty label (All Mail). Do **not** set
+`INBOX` if you want archived threads.
 
 ## 1. Google Cloud setup (one-time)
 
 1. [Google Cloud Console](https://console.cloud.google.com/) → create/select project
-2. **APIs & Services** → enable **Gmail API**
-3. **OAuth consent screen** — External or Internal; add scope `gmail.readonly`
-4. **Credentials** → **Create credentials** → **OAuth client ID** → **Desktop app**
-5. Download JSON or copy Client ID + Client Secret
+2. Enable **Gmail API**
+3. **OAuth consent screen** — Testing is fine for personal use; add yourself as a test user
+4. **Credentials** → **OAuth client ID** → **Desktop app**
+5. Download JSON
+
+Exact click-path: see session notes — Desktop app + Advanced approval on the warning screen.
 
 ## 2. Refresh token (run on your PC)
 
 ```bash
 cd monsoon
-pip install google-auth-oauthlib google-api-python-client
-python infra/scripts/gmail_oauth_setup.py --client-secrets path/to/client_secret.json
+python infra/scripts/gmail_oauth_setup.py --client-secrets "C:\Users\you\Downloads\client_secret.json"
 ```
 
-Copy `GMAIL_REFRESH_TOKEN` into Portainer (treat as secret).
+Copy printed `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` into Portainer.
 
 ## 3. Portainer env
 
@@ -27,27 +39,35 @@ Copy `GMAIL_REFRESH_TOKEN` into Portainer (treat as secret).
 GMAIL_CLIENT_ID=...
 GMAIL_CLIENT_SECRET=...
 GMAIL_REFRESH_TOKEN=...
-GMAIL_SYNC_LABEL=INBOX          # optional — omit or empty for all mail
+# Leave UNSET for All Mail (archive included):
+# GMAIL_SYNC_LABEL=
 GMAIL_SYNC_PAGE_SIZE=50
-GMAIL_SYNC_MAX_PAGES=           # optional pilot cap
+# Optional same-day catch-up (defaults already aggressive):
+MONSOON_GMAIL_SYNC_INTERVAL_MINUTES=5
+MONSOON_GMAIL_SYNC_BATCH_PAGES=5
+# Optional:
+# GMAIL_INCLUDE_SPAM_TRASH=true
 ```
 
 Redeploy stack after adding vars.
 
-## 4. Sync on notcoolio
+## 4. Sync
+
+Manual:
 
 ```bash
-# Config + counts
 curl -s http://127.0.0.1:8080/health/gmail-index | python3 -m json.tool
+docker exec monsoon-app python infra/scripts/gmail_sync.py --max-pages 5
+```
 
-# Pilot (2 pages)
-docker exec monsoon-app python infra/scripts/gmail_sync.py --max-pages 2
+Background (default after MS-03): loops every N minutes, batch of pages;
+resumes incomplete list even if a historyId was saved mid-pilot.
 
-# Full initial sync (resume via sync_state page token if interrupted)
-docker exec monsoon-app python infra/scripts/gmail_sync.py --full
+When `list_sync_in_progress` in health is `false` / absent and message counts stabilize,
+initial backlog is done — further runs use Gmail history (delta).
 
-# Incremental (uses Gmail historyId after first successful sync)
-docker exec monsoon-app python infra/scripts/gmail_sync.py
+```bash
+curl -s http://127.0.0.1:8080/health/scheduler | python3 -m json.tool
 ```
 
 ## Tables
@@ -63,4 +83,3 @@ docker exec monsoon-app python infra/scripts/gmail_sync.py
 
 - LLM classify: action / FYI / waiting
 - Promote email → task / WorkFlowy context child
-- Scheduled sync (cron / APScheduler every 15 min)

@@ -28,13 +28,24 @@ WHATSAPP_SWAGGER_USERNAME=admin
 WHATSAPP_SWAGGER_PASSWORD=
 # WAHA_BASE_URL / webhook URL are fixed in compose (127.0.0.1 sidecar — see deploy-portainer.md §4)
 
-# --- Gmail (Priority 2 — see docs/gmail-ingestion.md) ---
+# --- Gmail (see docs/gmail-ingestion.md) ---
 GMAIL_CLIENT_ID=
 GMAIL_CLIENT_SECRET=
 GMAIL_REFRESH_TOKEN=
-GMAIL_SYNC_LABEL=INBOX
+# Leave GMAIL_SYNC_LABEL unset/empty for All Mail (includes Archive).
+# GMAIL_SYNC_LABEL=INBOX
 GMAIL_SYNC_PAGE_SIZE=50
-# Omit GMAIL_SYNC_MAX_PAGES until Gmail pilot (empty value crashes older builds)
+# GMAIL_INCLUDE_SPAM_TRASH=true
+# Omit GMAIL_SYNC_MAX_PAGES (empty value crashes older builds)
+
+# --- Background scheduler (same-day catch-up defaults) ---
+MONSOON_SCHEDULER_ENABLED=true
+MONSOON_GMAIL_SYNC_INTERVAL_MINUTES=5
+MONSOON_GMAIL_SYNC_BATCH_PAGES=5
+MONSOON_WA_SYNC_INTERVAL_MINUTES=5
+MONSOON_WA_SYNC_BATCH_CHATS=5
+MONSOON_WORKFLOWY_SYNC_INTERVAL_MINUTES=20
+MONSOON_REMINDER_INTERVAL_MINUTES=1
 
 # --- Ollama on lenai ---
 # Prefer lenai LAN IP if notcoolio and lenai are on the same subnet (lowest latency).
@@ -43,4 +54,4 @@ GMAIL_SYNC_PAGE_SIZE=50
 OLLAMA_BASE_URL=http://lenai:11434
 OLLAMA_MODEL=llama3.2
 OLLAMA_TIMEOUT_SECONDS=60
-MONSOON_SOUL_PROMPT=You are monsoon, a concise personal assistant. Be practical, proactive, and brief.
+MONSOON_SOUL_PROMPT=You are monsoon, Prakalp's personal capture assistant on WhatsApp. Be concrete, action-first, and brief. No corporate filler, no thank-yous.

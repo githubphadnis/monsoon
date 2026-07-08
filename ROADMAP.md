@@ -13,11 +13,11 @@ See [`docs/context-atlas.md`](./docs/context-atlas.md) for the layer model.
 
 | Order | Issue | Theme | Status |
 |-------|-------|-------|--------|
-| 1 | [**#1** MS-01](https://github.com/githubphadnis/monsoon/issues/1) | Gmail ingestion — OAuth, sync, email in context slice | **In progress** |
-| 2 | [**#2** MS-02](https://github.com/githubphadnis/monsoon/issues/2) | WorkFlowy reverse sync (WF children → Postgres) | Backlog |
-| 3 | [**#3** MS-03](https://github.com/githubphadnis/monsoon/issues/3) | Scheduled background jobs (Gmail + WA delta + digest cron) | Backlog |
-| 4 | [**#4** MS-04](https://github.com/githubphadnis/monsoon/issues/4) | Reminder scheduler (`remind_at` → WhatsApp) | Backlog |
-| 5 | [**#5** MS-05](https://github.com/githubphadnis/monsoon/issues/5) | Context slice v2 — `task_context_items` in bundle | Backlog |
+| 1 | [**#1** MS-01](https://github.com/githubphadnis/monsoon/issues/1) | Gmail ingestion — OAuth, sync, email in context slice | **Done (pilot + All Mail resume)** |
+| 2 | [**#2** MS-02](https://github.com/githubphadnis/monsoon/issues/2) | WorkFlowy reverse sync (WF children → Postgres) | **Done** |
+| 3 | [**#3** MS-03](https://github.com/githubphadnis/monsoon/issues/3) | Scheduled background jobs (Gmail + WA + WF) | **Done** |
+| 4 | [**#4** MS-04](https://github.com/githubphadnis/monsoon/issues/4) | Reminder scheduler (`remind_at` → WhatsApp) | **Done** |
+| 5 | [**#5** MS-05](https://github.com/githubphadnis/monsoon/issues/5) | Context slice v2 — `task_context_items` in bundle | **Done** (with MS-02) |
 | 6 | [**#6** MS-06](https://github.com/githubphadnis/monsoon/issues/6) | Auto-link ambient research → open tasks | V1.1 |
 | 7 | [**#7** MS-07](https://github.com/githubphadnis/monsoon/issues/7) | Active task (`on <id>`) | V1.1 |
 | 8 | [**#8** MS-08](https://github.com/githubphadnis/monsoon/issues/8) | Snooze / reschedule | Backlog |
@@ -27,67 +27,30 @@ See [`docs/context-atlas.md`](./docs/context-atlas.md) for the layer model.
 ## Done
 
 - [x] Phase 1 — WAHA webhook capture, Postgres tasks, replies
-- [x] Self-chat loop guard, keyword aliases, Portainer sidecar networking
-- [x] Deploy on notcoolio — session `prakalp`, WA pilot (5 chats, 91 msgs)
-- [x] LLM Phase A — context slice, `digest`, `reflect`, title-first replies
-- [x] WorkFlowy push mirror — create, `note <id>`, `done`
-- [x] Gmail tables + sync service + OAuth script + `/health/gmail-index`
-- [x] WA backfill pilot + entity extract
+- [x] Deploy on notcoolio — session `prakalp`, WA + Gmail pilots
+- [x] LLM Phase A — context slice, `digest`, `reflect`, title-first replies, tightened digest prompt
+- [x] WorkFlowy push + reverse mirror; task context in LLM bundle
+- [x] Background sync loops (Gmail/WA/WF) + `/health/scheduler`
+- [x] Reminder delivery (`remind_at` → WAHA; clear after send)
 
 ---
 
-## MS-01 — Gmail ingestion (now)
+## Operator catch-up (same day)
 
-- [x] Tables: `email_threads`, `email_messages`, `email_participants`
-- [x] `app/integrations/gmail/` — client, parse, sync service
-- [x] `infra/scripts/gmail_sync.py` + `gmail_oauth_setup.py`
-- [x] `/health/gmail-index`
-- [ ] **Operator:** OAuth refresh token in Portainer + first sync on notcoolio
-- [x] Email lines in context slice for `digest` / `reflect`
-- [ ] LLM classify: action / FYI / waiting (phase 2b — V1.1)
+- Leave `GMAIL_SYNC_LABEL` **empty** for All Mail (Archive included)
+- Optional `GMAIL_INCLUDE_SPAM_TRASH=true`
+- Defaults: Gmail every 5 min × 5 pages; WA every 5 min × 5 chats
+- Watch `/health/gmail-index` and `/health/wa-index` until counts stabilizeSkirt
 
 ---
 
-## MS-02 — WorkFlowy reverse sync
+## Still open / V1.1
 
-See [`docs/workflowy-mirror.md`](./docs/workflowy-mirror.md).
-
-- [x] Push: task node + `note <id>` context children
-- [ ] Read WF children → `task_context_items` (skip system prefixes)
-- [ ] Feed reverse-synced items into context slice (pairs with MS-05)
-
----
-
-## MS-03 — Scheduled jobs
-
-- [ ] APScheduler in app (Gmail incremental ~15 min)
-- [ ] WA delta backfill (nightly, capped until volume hardening)
-- [ ] Morning digest cron (optional; after MS-04 pattern)
-
----
-
-## MS-04 — Reminders
-
-- [ ] `remind_at` / `due_at` → WAHA outbound
-- [ ] Idempotent delivery across restarts
-- [ ] MS-08: `snooze` command
-
----
-
-## MS-05 / MS-06 / MS-07 — Context intelligence (V1.0–V1.1)
-
-- [ ] `task_context_items` in LLM context bundle
-- [ ] Auto-link free-text / research to best-matching open task
-- [ ] `on <id>` active task for multi-step work
-
----
-
-## V1.1+
-
+- MS-08 snooze command
+- Auto-link research to open tasks; active task mode
+- Morning digest cron (outbound)
+- Email LLM classify / promote-to-task
 - pgvector semantic recall
-- Weekly reflection over full atlas
-- Email → task promotion command
-- Relation hints (duplicate / competing commitments)
 
 ---
 
@@ -95,5 +58,5 @@ See [`docs/workflowy-mirror.md`](./docs/workflowy-mirror.md).
 
 - OpenLoomi codebase import (ideas only)
 - Multi-user / SaaS
-- Second capture channel (Telegram / HTTP API) until V1.0 stable
+- Second capture channel until V1.0 stable
 - Full mobile app

@@ -33,10 +33,10 @@ the model supports it.
 |-------|--------|-------|------------|--------|
 | **Parse** | Shipped | Free-text WhatsApp | JSON task fields | Create task (regex first, Ollama fallback) |
 | **Context slice** | Shipped | Postgres tasks + WA index + entities | SQL bundle text | Feed digest / reflect |
-| **Enrich digest** | Shipped | Context slice | Summary + next steps | `digest` / `summary` (SQL fallback if Ollama down) |
+| **Enrich digest** | Shipped | Context slice | Action digest (no fluff) | `digest` / `summary` (SQL fallback if Ollama down) |
 | **Reflect** | Shipped | Topic + context slice | Active/blockers/next step | `reflect <topic>` |
 | **Classify** | Planned | New task + context | bucket routing | WorkFlowy bucket move |
-| **Nudge** | Planned | Overdue / stale waiting | Short reminder | Scheduler outbound |
+| **Nudge** | Shipped | Overdue / due remind_at | Short reminder | Background ReminderService |
 | **Weekly reflect** | Planned | task_events | Patterns | Cron |
 
 ## Context slice (shipped 2026-07-08)
@@ -44,6 +44,7 @@ the model supports it.
 `app/services/context_slice.py` — OpenLoomi-inspired **SQL bundle, not graph DB**:
 
 - Open tasks (up to 20)
+- Task context (`task_context_items`, up to 30)
 - Recent email messages (up to 20, topic-filtered when requested)
 - Recent WA messages (up to 30, topic-filtered when requested)
 - Extracted entities (phones, emails, URLs)

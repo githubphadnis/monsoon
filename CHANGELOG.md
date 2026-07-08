@@ -9,18 +9,23 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Reminder scheduler: due `remind_at` → WhatsApp; clears after successful send (idempotent).
+- `GMAIL_INCLUDE_SPAM_TRASH`; All Mail when `GMAIL_SYNC_LABEL` empty (Archive included).
 - Roadmap build sequence MS-01…08; GitHub milestones V1.0 / V1.1 and issues [#1–#8](https://github.com/githubphadnis/monsoon/issues).
 - `docs/roadmap_issues.csv`, `docs/ISSUE_IMPORT.md`, `scripts/create_roadmap_issues.py`.
 - Context slice: **Email** section for `digest` / `reflect` (recent messages, topic filter, linked entities).
 - Context slice: **Task Context** section sourced from `task_context_items`.
 - `/health/gmail-index` reports sync cursor metadata when present.
-- `/health/scheduler` reports background Gmail / WA / WorkFlowy batch loop state.
+- `/health/scheduler` reports background Gmail / WA / WorkFlowy / reminder loop state.
 
 ### Changed
 
+- Digest/reflect prompts: action digest, ban thank-you / category fluff; concrete titles + 1–2 next actions.
+- Default soul prompt and background sync intervals tuned for same-day Gmail/WA catch-up.
+- Gmail sync resumes incomplete list even if historyId was saved mid-pilot.
 - LLM digest/reflect: task titles in replies instead of `Task #N` (context slice title-first).
 - WorkFlowy reverse sync now reads task child bullets back into Postgres.
-- Background scheduler runs small Gmail, WhatsApp, and WorkFlowy sync batches.
+- Background scheduler runs small Gmail, WhatsApp, WorkFlowy, and reminder batches.
 
 ### Fixed
 

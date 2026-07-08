@@ -2,27 +2,33 @@
 
 ## Last worked on
 
-2026-07-08 — Gmail pilot fixed on notcoolio; background sync loops + WorkFlowy reverse sync implemented locally.
+2026-07-08 — digest prompt harden; reminders; same-day background Gmail/WA indexing.
 
 ## Current state / WIP
 
-- **Deployed on notcoolio** — Gmail pilot succeeded after dedupe fix (`100` messages, `85` threads, `87` participants`).
-- **WA pilot:** 5 chats, 91 messages indexed (`prakalp` session).
-- **LLM:** `digest`, `reflect`, WorkFlowy push mirror operational; email is in context slice on `main`.
-- **Local WIP (not yet pushed):** background scheduler loops (`/health/scheduler`), WA chat cursor batching, WorkFlowy reverse sync, task-context section in context slice.
-- **GitHub:** milestones V1.0 / V1.1; issues [#1–#8](https://github.com/githubphadnis/monsoon/issues).
+- **Robot:** Gmail pilot: 100 msgs / 85 threads (incomplete list resume fixed).
+- **Background jobs:** Gmail, WA, WorkFlowy reverse, reminder poller — `/health/scheduler`.
+- **LLM:** title-first context + tightened digest/reflect instructions.
+- **WorkFlowy:** push + reverse sync; task context in LLM bundle.
 
-## Next immediate steps
+## Operator priorities
 
-1. **If shipping current local batch:** commit/push, redeploy, then check `/health/scheduler`.
-2. **Operator:** let background Gmail / WA loops trickle and watch counts.
-3. **Next code:** MS-04 reminder scheduler.
+1. Redeploy latest `main`.
+2. Clear `GMAIL_SYNC_LABEL` if set to `-INBOX` — leave empty for Archive/All Mail.
+3. Leave stack running; watch gmail/wa index counts climb through the day.
+4. Retest `digest`.
+
+## Next product work (defer / Griham-compatible pause)
+
+- MS-08 snooze
+- Auto-link / active task (MS-06/07)
+- Morning outbound digest
 
 ## Environment
 
 | Host | Role |
 |------|------|
-| `notcoolio` | Docker / Portainer — monsoon stack |
-| `lenai` | Ollama (`OLLAMA_BASE_URL` — prefer LAN IP `192.168.1.235:11434`) |
+| `notcoolio` | monsoon Portainer stack |
+| `lenai` | Ollama (`OLLAMA_BASE_URL` LAN IP preferred) |
 
-**Portainer essentials:** existing WAHA vars + optional `WORKFLOWY_*`, `OLLAMA_*`. For Gmail add `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`.
+**Gmail:** all of Client ID/Secret/Refresh Token; **no** sync label for All Mail.

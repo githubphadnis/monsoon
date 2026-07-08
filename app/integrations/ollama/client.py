@@ -26,18 +26,23 @@ Return a single JSON object with keys:
 No markdown. No explanation. JSON only."""
 
 DIGEST_INSTRUCTION = (
-    "Summarize open work. Lead with what matters today. "
-    "End with 1-2 concrete next steps. Max 800 chars. WhatsApp-friendly plain text. "
-    "Name tasks by their title or subject in plain language — never lead with "
-    "'Task #N', '#N', or 'id:T' references in the reply."
+    "You are writing a personal action digest for WhatsApp — not a meeting summary. "
+    "Rules:\n"
+    "- Lead with 2–4 concrete items by task title / email subject / WA thread — never invent.\n"
+    "- Prefer open tasks first; pull in email/WA only when it clearly relates or is time-sensitive.\n"
+    "- End with exactly 1–2 next actions the user can do today.\n"
+    "- Max 700 chars. Plain text. Short lines OK.\n"
+    "- NEVER: thank the user, say 'here's a summary', categorize into Insurance/Health/"
+    "Personal Communication buckets, list raw emails/phones, or offer further assistance.\n"
+    "- NEVER lead with 'Task #N', '#N', or 'id:T'."
 )
 
 REFLECT_INSTRUCTION = (
-    "User asked for reflection on a topic. Be factual to context only. "
-    "Structure: (1) what's active (2) blockers/risks (3) one suggested next step. "
-    "Max 1000 chars. "
-    "Name tasks by their title or subject in plain language — never lead with "
-    "'Task #N', '#N', or 'id:T' references in the reply."
+    "Reflect on the named topic using only the provided context. "
+    "Structure: (1) what's active — name concrete items (2) blockers/risks "
+    "(3) one next step. Max 900 chars. Plain WhatsApp text. "
+    "Do not thank the user, do not invent facts, do not dump addresses/phones. "
+    "Never lead with 'Task #N', '#N', or 'id:T'."
 )
 
 

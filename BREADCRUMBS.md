@@ -1,26 +1,35 @@
 # BREADCRUMBS — monsoon
 
-**Updated:** 2026-07-08 10:15
+**Updated:** 2026-07-08 10:35
 
-## Done this session
+## Done
 
-- Roadmap reordered; GH issues [#1–#8](https://github.com/githubphadnis/monsoon/issues) + milestones V1.0 / V1.1
-- MS-01 Gmail pilot fixed and running on notcoolio (`100` messages, `85` threads, `87` participants in first 2 pages)
-- Small background sync loops added for Gmail / WA / WorkFlowy (`/health/scheduler`)
-- WorkFlowy reverse sync reads child bullets into `task_context_items`
-- LLM context bundle now includes `## Task Context`
+- Digest/reflect prompts tightened (ban thank-you / category fluff)
+- Reminders: `remind_at` → WhatsApp; clear after send (MS-04)
+- Background sync sped up for same-day catch-up (Gmail 5m×5 pages, WA 5m×5 chats)
+- Gmail: resume incomplete list even after mid-pilot historyId; All Mail when label empty
+- Docs: gmail-ingestion, whatsapp-backfill, portainer-env, ROADMAP
 
-## Next action
+## Operator after redeploy
 
-1. If shipping this batch: redeploy and check `curl -s http://127.0.0.1:8080/health/scheduler | python3 -m json.tool`
-2. In WorkFlowy, add a child bullet under a synced task; wait one loop or trigger via restart
-3. WhatsApp: `reflect <topic>` — should start seeing task child context alongside email + WA
+1. **Portainer:** ensure `GMAIL_SYNC_LABEL` is **unset/empty** (not INBOX) so Archive is indexed.
+2. Redeploy `main`.
+3. Watch:
+   - `curl -s http://127.0.0.1:8080/health/scheduler | python3 -m json.tool`
+   - `curl -s http://127.0.0.1:8080/health/gmail-index | python3 -m json.tool`
+   - `curl -s http://127.0.0.1:8080/health/wa-index | python3 -m json.tool`
+4. WhatsApp: `digest` — should be concrete, not "Thank you for sharing…"
+5. Smoke reminder: `remind me to test monsoon ping` with a near due (or temporarily set `remind_at` in DB)
+
+## Optional Spam/Trash
+
+`GMAIL_INCLUDE_SPAM_TRASH=true` in Portainer if you want those folders too.
 
 ## Then
 
-- **#4** Reminder scheduler (`remind_at` → WhatsApp)
-- Optional: tighten scheduler intervals / batch sizes based on notcoolio load
+- Switch back to Griham once indexes are running and digest looks sane
+- Later: MS-08 snooze; auto-link; morning digest cron
 
 ## Branch
 
-- `main` — local changes pending review/commit
+- `main` — push this session

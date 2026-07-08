@@ -35,7 +35,9 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.2"
     ollama_timeout_seconds: int = 60
     monsoon_soul_prompt: str = (
-        "You are monsoon, a concise personal assistant. Be practical, proactive, and brief."
+        "You are monsoon, Prakalp's personal capture assistant on WhatsApp. "
+        "Be concrete, action-first, and brief. No corporate filler, no thank-yous, "
+        "no 'let me know if you need help'."
     )
 
     monsoon_wa_backfill_chat_page_size: int = 50
@@ -54,11 +56,14 @@ class Settings(BaseSettings):
     gmail_sync_page_size: int = 50
     gmail_sync_max_pages: int | None = None  # pilot cap; None = no limit
     monsoon_scheduler_enabled: bool = True
-    monsoon_gmail_sync_interval_minutes: int = 15
-    monsoon_gmail_sync_batch_pages: int = 2
-    monsoon_wa_sync_interval_minutes: int = 30
-    monsoon_wa_sync_batch_chats: int = 2
+    # Same-day catch-up defaults: small batches, frequent loops (safe on notcoolio).
+    monsoon_gmail_sync_interval_minutes: int = 5
+    monsoon_gmail_sync_batch_pages: int = 5
+    monsoon_wa_sync_interval_minutes: int = 5
+    monsoon_wa_sync_batch_chats: int = 5
     monsoon_workflowy_sync_interval_minutes: int = 20
+    monsoon_reminder_interval_minutes: int = 1
+    gmail_include_spam_trash: bool = False  # set true to also index Spam/Trash
 
     @field_validator("gmail_sync_max_pages", mode="before")
     @classmethod

@@ -42,6 +42,18 @@ docker exec monsoon-app python infra/scripts/wa_backfill.py --chat-id 9182918822
 | `MONSOON_WA_BACKFILL_MESSAGE_PAGE_SIZE` | 100 | Messages per page |
 | `MONSOON_WA_BACKFILL_REQUEST_DELAY_MS` | 250 | Pause between WAHA calls |
 | `MONSOON_WA_BACKFILL_EXTRACT_ENTITIES` | true | Regex phones/emails/URLs |
+| `MONSOON_WA_SYNC_INTERVAL_MINUTES` | 5 | Background batch interval |
+| `MONSOON_WA_SYNC_BATCH_CHATS` | 5 | Chats per background tick |
+
+Background scheduler advances a chat-list cursor (`sync_state` key
+`wa_backfill:chat_list_offset`) so small batches progress across the full session.
+
+Watch:
+
+```bash
+curl -s http://127.0.0.1:8080/health/wa-index | python3 -m json.tool
+curl -s http://127.0.0.1:8080/health/scheduler | python3 -m json.tool
+```
 
 ## WAHA API
 
@@ -56,4 +68,3 @@ History depth depends on what WAHA has synced locally (~3 months with `fullSync=
 
 - Ollama batch: 5W1H structured extract per thread
 - Link `wa_messages` to `tasks` / WorkFlowy context children
-- Nightly cron container or APScheduler job

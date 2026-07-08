@@ -17,6 +17,9 @@
 | 2026-07-08 | Email in context slice | `digest`/`reflect` include indexed Gmail (topic filter + entity linkage) |
 | 2026-07-08 | Low-impact background sync loops | Small Gmail / WA batches in-app avoid heavy one-shot syncs on notcoolio |
 | 2026-07-08 | WorkFlowy reverse sync feeds task context | Non-system child bullets reconcile into `task_context_items`, then into LLM context |
+| 2026-07-08 | Digest anti-fluff prompts | Ban thank-you / category dumps; force concrete titles + 1–2 next actions |
+| 2026-07-08 | Reminder delivery | Clear `remind_at` after WAHA send for idempotency across restarts |
+| 2026-07-08 | Gmail All Mail resume | Empty label = archive included; finish list before trusting historyId |
 
 ## WorkFlowy — fractal task + context
 
