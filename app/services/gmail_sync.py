@@ -269,9 +269,19 @@ class GmailSyncService:
             self._db.add(SyncState(key=key, value=payload))
 
 
-def gmail_index_counts(db: Session) -> dict[str, int]:
-    return {
+def gmail_index_counts(db: Session) -> dict[str, int | str | None]:
+    from app.models import SyncState
+
+    counts = {
         "threads": db.scalar(select(func.count()).select_from(EmailThread)) or 0,
         "messages": db.scalar(select(func.count()).select_from(EmailMessage)) or 0,
         "participants": db.scalar(select(func.count()).select_from(EmailParticipant)) or 0,
     }
+    history_row = db.get(SyncState, HISTORY_KEY)
+    if history_row and history_row.value:
+        counts["last_history_id"] = history_row.value.get("cursor")
+        counts["history_updated"] = history_row.value.get("updated")
+    page_row = db.get(SyncState, PAGE_TOKEN_KEY)
+    if page_row and page_row.value:
+        counts["list_sync_in_progress"] = bool(page_row.value.get("cursor"))
+    return counts

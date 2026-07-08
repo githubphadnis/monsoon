@@ -1,25 +1,28 @@
 # BREADCRUMBS — monsoon
 
-**Updated:** 2026-07-08 07:36
+**Updated:** 2026-07-08 08:40
 
-## WA pilot — DONE
+## Done this session
 
-5 chats, 91 messages indexed on notcoolio (`prakalp` session). Backfill fix deployed (`dac7ce6`).
+- Roadmap reordered; GH issues [#1–#8](https://github.com/githubphadnis/monsoon/issues) + milestones V1.0 / V1.1
+- MS-01 code: email lines in context slice (`digest` / `reflect` get `## Email` section)
+- Title-first LLM replies pushed (`c762e3a`)
 
-## Next action
+## Next action (operator — MS-01)
 
-WhatsApp self-chat smoke on notcoolio stack:
+1. On PC: `python infra/scripts/gmail_oauth_setup.py --client-secrets …` → copy refresh token
+2. Portainer: set `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` (omit `GMAIL_SYNC_MAX_PAGES` or leave empty)
+3. Redeploy stack
+4. On notcoolio:
+   - `curl -s http://127.0.0.1:8080/health/gmail-index | python3 -m json.tool`
+   - `docker exec monsoon-app python infra/scripts/gmail_sync.py --max-pages 2`
+5. WhatsApp: `reflect <topic from inbox>` — should cite email + WA
 
-1. `digest` — should use Ollama + WA context (or SQL fallback if lenai down)
-2. `reflect <topic>` — pick a topic from your indexed chats
-3. `todo smoke test` — capture still works
-4. Optional: set `WORKFLOWY_API_KEY` + `WORKFLOWY_ROOT_NODE_ID` in Portainer for mirror
+## Then (code)
 
-## Defer
-
-- Full WA backfill (`--full`) until volume hardening
-- Gmail OAuth
+- **#2** MS-02 WorkFlowy reverse sync
+- **#3** MS-03 scheduled cron
 
 ## Branch
 
-- `main` @ `dac7ce6` — CI + GHCR green
+- `main` — push pending this session

@@ -13,6 +13,8 @@
 | 2026-07-07 | Context atlas north star | Tasks are one lens; Gmail + full WA index — see `docs/context-atlas.md` |
 | 2026-07-08 | Context slice + LLM digest/reflect | SQL bundle per LLM call; soul prompt on Ollama contributions; fail-open to SQL digest |
 | 2026-07-08 | WorkFlowy push mirror v1 | Task create → WF todo + system children; `note <id>` → context child; `task_context_items` table |
+| 2026-07-08 | Roadmap MS-01…08 + GH issues | Agreed build order: Gmail → WF reverse → scheduler; issues #1–#8, milestones V1.0/V1.1 |
+| 2026-07-08 | Email in context slice | `digest`/`reflect` include indexed Gmail (topic filter + entity linkage) |
 
 ## WorkFlowy — fractal task + context
 

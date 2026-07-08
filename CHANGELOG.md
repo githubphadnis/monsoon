@@ -7,6 +7,17 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Roadmap build sequence MS-01…08; GitHub milestones V1.0 / V1.1 and issues [#1–#8](https://github.com/githubphadnis/monsoon/issues).
+- `docs/roadmap_issues.csv`, `docs/ISSUE_IMPORT.md`, `scripts/create_roadmap_issues.py`.
+- Context slice: **Email** section for `digest` / `reflect` (recent messages, topic filter, linked entities).
+- `/health/gmail-index` reports sync cursor metadata when present.
+
+### Changed
+
+- LLM digest/reflect: task titles in replies instead of `Task #N` (context slice title-first).
+
 ### Fixed
 
 - WA backfill: duplicate `wa_contacts` for `status@broadcast` — contact cache + preload + skip self JID.

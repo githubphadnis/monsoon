@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Settings
 from app.db import Base
-from app.models import ExtractedEntity, Task, User, WaChat, WaMessage
+from app.models import ExtractedEntity, EmailMessage, EmailThread, Task, User, WaChat, WaMessage
 from app.models import tables as _tables  # noqa: F401
 from app.schemas.context import ContextSliceRequest
 from app.services.context_slice import build_context_slice
@@ -57,6 +57,7 @@ def test_empty_db_returns_empty_sections(db: Session, settings: Settings, user: 
     result = build_context_slice(db, settings, request)
 
     assert result.tasks_text == ""
+    assert result.emails_text == ""
     assert result.wa_messages_text == ""
     assert result.entities_text == ""
     assert result.topic is None
@@ -273,3 +274,96 @@ def test_other_session_wa_messages_excluded(db: Session, settings: Settings, use
     )
 
     assert result.wa_messages_text == ""
+
+
+def test_email_topic_filter(db: Session, settings: Settings, user: User):
+    thread = EmailThread(gmail_thread_id="thread-pondy", subject="Hotel Pondicherry")
+    db.add(thread)
+    db.flush()
+
+    ts = datetime(2025, 7, 1, 12, 0, tzinfo=UTC)
+    db.add_all(
+        [
+            EmailMessage(
+                thread_uuid=thread.id,
+                gmail_message_id="gmail-pondy-1",
+                gmail_thread_id="thread-pondy",
+                from_email="hotel@example.com",
+                from_name="White Town Inn",
+                subject="Booking confirmation Pondicherry",
+                snippet="check-in Friday White Town",
+                received_at=ts,
+            ),
+            EmailMessage(
+                thread_uuid=thread.id,
+                gmail_message_id="gmail-other-1",
+                gmail_thread_id="thread-other",
+                from_email="bank@example.com",
+                subject="Statement ready",
+                snippet="your monthly statement",
+                received_at=ts,
+            ),
+        ]
+    )
+    db.commit()
+
+    all_result = build_context_slice(
+        db, settings, ContextSliceRequest(user_id=user.id)
+    )
+    filtered = build_context_slice(
+        db,
+        settings,
+        ContextSliceRequest(user_id=user.id, topic="pondicherry"),
+    )
+
+    assert "White Town Inn" in all_result.emails_text
+    assert "Statement ready" in all_result.emails_text
+    assert "White Town Inn" in filtered.emails_text
+    assert "Statement ready" not in filtered.emails_text
+
+
+def test_email_entities_included_with_topic(db: Session, settings: Settings, user: User):
+    thread = EmailThread(gmail_thread_id="thread-griham", subject="Griham deploy")
+    db.add(thread)
+    db.flush()
+
+    db.add(
+        EmailMessage(
+            thread_uuid=thread.id,
+            gmail_message_id="gmail-griham-1",
+            gmail_thread_id="thread-griham",
+            from_email="ops@example.com",
+            subject="griham deploy tonight",
+            snippet="see https://griham.dev",
+            received_at=datetime(2025, 7, 2, 9, 0, tzinfo=UTC),
+        )
+    )
+    db.flush()
+
+    db.add(
+        ExtractedEntity(
+            source_type="email_message",
+            source_id="gmail-griham-1",
+            entity_type="url",
+            value="https://griham.dev",
+        )
+    )
+    db.add(
+        ExtractedEntity(
+            source_type="email_message",
+            source_id="other-gmail",
+            entity_type="url",
+            value="https://other.example",
+        )
+    )
+    db.commit()
+
+    result = build_context_slice(
+        db,
+        settings,
+        ContextSliceRequest(user_id=user.id, topic="griham"),
+    )
+
+    assert "griham deploy tonight" in result.emails_text
+    assert "https://griham.dev" in result.entities_text
+    assert "https://other.example" not in result.entities_text

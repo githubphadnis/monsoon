@@ -44,6 +44,7 @@ the model supports it.
 `app/services/context_slice.py` — OpenLoomi-inspired **SQL bundle, not graph DB**:
 
 - Open tasks (up to 20)
+- Recent email messages (up to 20, topic-filtered when requested)
 - Recent WA messages (up to 30, topic-filtered when requested)
 - Extracted entities (phones, emails, URLs)
 - Char budget default 12k — truncates oldest first

@@ -130,6 +130,8 @@ class CaptureService:
         parts: list[str] = []
         if slice_.tasks_text:
             parts.append(f"## Tasks\n{slice_.tasks_text}")
+        if slice_.emails_text:
+            parts.append(f"## Email\n{slice_.emails_text}")
         if slice_.wa_messages_text:
             parts.append(f"## WhatsApp\n{slice_.wa_messages_text}")
         if slice_.entities_text:
