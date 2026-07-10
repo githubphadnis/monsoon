@@ -9,6 +9,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Conversational **`ask`** path: free-text / questions use Ollama + context slice instead of "I didn't catch that" or junk todos.
+- Digest/reflect post-filter rejects entity-dump / thank-you fluff and falls back to SQL digest.
 - Reminder scheduler: due `remind_at` → WhatsApp; clears after successful send (idempotent).
 - `GMAIL_INCLUDE_SPAM_TRASH`; All Mail when `GMAIL_SYNC_LABEL` empty (Archive included).
 - Roadmap build sequence MS-01…08; GitHub milestones V1.0 / V1.1 and issues [#1–#8](https://github.com/githubphadnis/monsoon/issues).
@@ -20,7 +22,10 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- Digest/reflect prompts: action digest, ban thank-you / category fluff; concrete titles + 1–2 next actions.
+- Digest/reflect prompts: connected prose (not staccato bullets); ban entity inventories and category fluff.
+- LLM context for digest/reflect/ask **omits `## Entities`**; WA slice skips `from_me` and bot-reply noise.
+- Quiet WhatsApp acks (`Saved · #N …` / `Done · #N`); `list` hides URL-only titles.
+- WorkFlowy: system metadata goes in the node **note** field (no `id:`/`source:`/`due:`/`status:` children).
 - Default soul prompt and background sync intervals tuned for same-day Gmail/WA catch-up.
 - Gmail sync resumes incomplete list even if historyId was saved mid-pilot.
 - LLM digest/reflect: task titles in replies instead of `Task #N` (context slice title-first).

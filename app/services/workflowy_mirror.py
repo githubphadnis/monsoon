@@ -111,28 +111,24 @@ class WorkFlowyMirrorService:
             parent_id,
             task.title,
             layout_mode="todo",
+            note=self._system_note(task),
             position="bottom",
         )
         if not node_id:
             return None
 
         task.workflowy_node_id = node_id
-
-        system_children = [
-            f"id: T{task.display_number}",
-            f"source: {task.source}",
-            f"status: {task.status}",
-        ]
-        due_text = self._format_due(task.due_at)
-        if due_text:
-            system_children.append(f"due: {due_text}")
-
-        for child_name in system_children:
-            await self._client.create_child(node_id, child_name, position="bottom")
-
         self._db.flush()
         logger.info("WorkFlowy task mirrored T%s → %s", task.display_number, node_id)
         return node_id
+
+    def _system_note(self, task: Task) -> str:
+        """Compact machine metadata for the WorkFlowy note field (not child bullets)."""
+        parts = [f"T{task.display_number}", task.source or "whatsapp", task.status]
+        due_text = self._format_due(task.due_at)
+        if due_text:
+            parts.append(f"due {due_text}")
+        return " · ".join(parts)
 
     async def push_context_item(
         self,

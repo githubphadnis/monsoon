@@ -89,9 +89,70 @@ async def test_generate_digest_includes_soul_and_digest_instruction():
     assert DIGEST_INSTRUCTION in system_content
     assert "NEVER: thank the user" in system_content
     assert "action digest" in system_content
+    assert "connected paragraphs" in system_content
     user_content = payload["messages"][1]["content"]
     assert "2026-07-08T10:00:00+02:00" in user_content
     assert "Task A" in user_content
+
+
+@pytest.mark.asyncio
+async def test_generate_digest_rejects_entity_dump():
+    from app.integrations.ollama.client import looks_like_bad_digest
+
+    assert looks_like_bad_digest(
+        "### Entities Identified:\n*Phone Numbers:*\n- 9930360555\n"
+        "a@b.com c@d.com e@f.com g@h.com h@i.com"
+    )
+    assert looks_like_bad_digest("Thank you for sharing this information.")
+    assert not looks_like_bad_digest(
+        "Finish the Griham website by Saturday. Call Hatim before 10:00 IST."
+    )
+
+    settings = Settings(monsoon_soul_prompt="Soul prompt for monsoon")
+    client = OllamaClient(settings)
+    dump = (
+        "### Entities Identified:\n*Phone Numbers:*\n- 9930360555\n"
+        "a@b.com c@d.com e@f.com g@h.com h@i.com"
+    )
+    mock_http = _mock_async_client(_mock_chat_response(dump))
+
+    with patch(
+        "app.integrations.ollama.client.httpx.AsyncClient",
+        return_value=mock_http,
+    ):
+        result = await client.generate_digest(
+            context_text="## Tasks\nCall bank",
+            now_iso="2026-07-08T10:00:00+02:00",
+        )
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_generate_ask_includes_question_and_context():
+    from app.integrations.ollama.client import ASK_INSTRUCTION
+
+    settings = Settings(monsoon_soul_prompt="Soul prompt for monsoon")
+    client = OllamaClient(settings)
+    mock_response = _mock_chat_response("Berberich is asking about the timeline.")
+    mock_http = _mock_async_client(mock_response)
+
+    with patch(
+        "app.integrations.ollama.client.httpx.AsyncClient",
+        return_value=mock_http,
+    ):
+        result = await client.generate_ask(
+            question="elaborate on what berberich is saying",
+            context_text="## Email\n[Berberich] timeline update",
+            now_iso="2026-07-08T10:00:00+02:00",
+        )
+
+    assert "Berberich" in (result or "")
+    payload = mock_http.post.call_args.kwargs["json"]
+    assert ASK_INSTRUCTION in payload["messages"][0]["content"]
+    user_content = payload["messages"][1]["content"]
+    assert "elaborate on what berberich is saying" in user_content
+    assert "timeline update" in user_content
 
 
 @pytest.mark.asyncio

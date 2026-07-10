@@ -55,7 +55,7 @@ def _mock_db(user: User) -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_push_task_created_formats_system_children(settings: Settings, user: User, task: Task):
+async def test_push_task_created_puts_metadata_in_note(settings: Settings, user: User, task: Task):
     db = _mock_db(user)
     service = WorkFlowyMirrorService(db, settings)
 
@@ -88,21 +88,12 @@ async def test_push_task_created_formats_system_children(settings: Settings, use
     assert node_id == "task-node-abc"
     assert task.workflowy_node_id == "task-node-abc"
 
-    assert create_calls[0] == {
-        "parent_id": "bucket-waiting",
-        "name": "Call bank about wire transfer",
-        "layout_mode": "todo",
-        "note": None,
-        "position": "bottom",
-    }
-
-    child_names = [call["name"] for call in create_calls[1:]]
-    assert child_names == [
-        "id: T18",
-        "source: whatsapp",
-        "status: waiting",
-        "due: 2026-07-08 12:00",
-    ]
+    assert len(create_calls) == 1
+    assert create_calls[0]["parent_id"] == "bucket-waiting"
+    assert create_calls[0]["name"] == "Call bank about wire transfer"
+    assert create_calls[0]["layout_mode"] == "todo"
+    assert create_calls[0]["note"] == "T18 · whatsapp · waiting · due 2026-07-08 12:00"
+    service._client.create_child.assert_not_called()
 
 
 @pytest.mark.asyncio

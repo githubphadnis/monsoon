@@ -31,9 +31,10 @@ the model supports it.
 
 | Stage | Status | Input | LLM output | Action |
 |-------|--------|-------|------------|--------|
-| **Parse** | Shipped | Free-text WhatsApp | JSON task fields | Create task (regex first, Ollama fallback) |
-| **Context slice** | Shipped | Postgres tasks + WA index + entities | SQL bundle text | Feed digest / reflect |
-| **Enrich digest** | Shipped | Context slice | Action digest (no fluff) | `digest` / `summary` (SQL fallback if Ollama down) |
+| **Parse** | Shipped | Free-text WhatsApp | JSON task fields | Create task (regex first; Ollama only for clear commands) |
+| **Ask** | Shipped | Question / free text + context slice | Prose answer | Conversational reply (not a new todo) |
+| **Context slice** | Shipped | Postgres tasks + WA index (+ email) | SQL bundle text | Feed digest / reflect / ask |
+| **Enrich digest** | Shipped | Context slice (no entities) | Action digest prose | `digest` / `summary` (SQL fallback if Ollama down / bad dump) |
 | **Reflect** | Shipped | Topic + context slice | Active/blockers/next step | `reflect <topic>` |
 | **Classify** | Planned | New task + context | bucket routing | WorkFlowy bucket move |
 | **Nudge** | Shipped | Overdue / due remind_at | Short reminder | Background ReminderService |
@@ -56,9 +57,21 @@ Used by `digest` and `reflect` before every Ollama call.
 
 | Command | Behavior |
 |---------|----------|
-| `digest` / `summary` | Ollama soul + context slice → proactive summary; falls back to task list |
+| `digest` / `summary` | Ollama soul + context slice (tasks/email/WA, **no entity dump**) → prose action digest; SQL fallback |
 | `reflect griham` | Topic-filtered slice → reflection on what's active |
-| Free text | Ollama parse when regex misses |
+| Free-text questions | `ask` path — Ollama answers using the same context slice |
+| Explicit `todo` / `remind` / `note` | Create tasks (regex or high-confidence parse) |
+
+### Context awareness (status)
+
+**Now:** digest / reflect / ask all share the Postgres context slice (open tasks, task notes, recent email + WA). Entity lists are stored but **not** fed into LLM prompts (they caused phone/email dumps). Bot outbound is filtered out of WA lines.
+
+**Later:** auto-link free text to an active task (MS-06/07), morning outbound digest, optional ephemeral delete of bot messages.
+
+### Deferred UX ideas
+
+- Auto-delete monsoon WhatsApp replies after ~5 minutes (needs WAHA delete API spike).
+- Dedicated monitored chats with TTL — prefer fixing reply quality first.
 
 ## WorkFlowy integration (shipped 2026-07-08)
 

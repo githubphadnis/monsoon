@@ -1,6 +1,7 @@
 """Capture loop — parse WhatsApp text, persist tasks, reply."""
 
 import logging
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -28,11 +29,14 @@ note <text>               save a note
 note <id> <text>          add context to task
 done / complete <id>      mark complete
 list / show today         open tasks
-digest / summary          LLM summary (tasks + context)
+digest / summary          action digest (tasks + context)
 reflect <topic>           what's active on a topic
+ask anything              free-text questions (uses your context)
 help / ?                  this message
 
-Free text works too — I'll parse it."""
+Commands create tasks; other messages get an assistant reply."""
+
+_URL_ONLY_RE = re.compile(r"^https?://\S+$", re.IGNORECASE)
 
 
 class CaptureService:
@@ -100,6 +104,9 @@ class CaptureService:
         if parsed.kind == "reflect":
             return await self._reflect(user, parsed.reflect_topic)
 
+        if parsed.kind == "ask":
+            return await self._ask(user, parsed.title or parsed.raw_command or "")
+
         if parsed.kind == "list":
             return self._list_tasks(user, parsed.status or "today")
 
@@ -112,16 +119,17 @@ class CaptureService:
         if parsed.kind in {"todo", "note"} and parsed.title:
             return await self._create_task(user, parsed, source_message_id)
 
-        if parsed.title:
+        if parsed.title and parsed.kind != "unknown":
             return await self._create_task(user, parsed, source_message_id)
 
-        return "I didn't catch that. Send `help` for commands."
+        return await self._ask(user, parsed.raw_command or parsed.title or "")
 
     def _now_iso(self) -> str:
         tz = ZoneInfo(self._settings.app_timezone)
         return datetime.now(tz).isoformat()
 
     def _context_bundle(self, user: User, topic: str | None = None) -> str:
+        """Build LLM context — tasks/email/WA only (no entity dumps)."""
         slice_ = build_context_slice(
             self._db,
             self._settings,
@@ -136,8 +144,7 @@ class CaptureService:
             parts.append(f"## Email\n{slice_.emails_text}")
         if slice_.wa_messages_text:
             parts.append(f"## WhatsApp\n{slice_.wa_messages_text}")
-        if slice_.entities_text:
-            parts.append(f"## Entities\n{slice_.entities_text}")
+        # Intentionally omit ## Entities — models regurgitate phone/email lists.
         return "\n\n".join(parts) if parts else "No indexed context yet."
 
     def _next_display_number(self, user_id) -> int:
@@ -145,6 +152,13 @@ class CaptureService:
             select(func.max(Task.display_number)).where(Task.user_id == user_id)
         )
         return int(current or 0) + 1
+
+    @staticmethod
+    def _short_title(title: str, limit: int = 60) -> str:
+        cleaned = title.strip()
+        if len(cleaned) <= limit:
+            return cleaned
+        return cleaned[: limit - 1].rstrip() + "…"
 
     async def _create_task(self, user: User, parsed: ParsedCapture, source_message_id: str) -> str:
         display_number = self._next_display_number(user.id)
@@ -180,10 +194,9 @@ class CaptureService:
         if parsed.due_at:
             tz = ZoneInfo(self._settings.app_timezone)
             local = parsed.due_at.astimezone(tz) if parsed.due_at.tzinfo else parsed.due_at
-            due_part = f" Reminder: {local.strftime('%a %d %b %H:%M')}."
+            due_part = f" · {local.strftime('%a %d %b %H:%M')}"
 
-        kind_label = "Note" if parsed.kind == "note" else "Task"
-        return f"{kind_label} #{display_number} created: {task.title}.{due_part}"
+        return f"Saved · #{display_number} {self._short_title(task.title)}{due_part}"
 
     async def _append_task_note(
         self, user: User, parsed: ParsedCapture, source_message_id: str
@@ -213,7 +226,7 @@ class CaptureService:
                 payload={"body": parsed.title, "source_message_id": source_message_id},
             )
         )
-        return f"Context added to #{parsed.task_number}: {parsed.title}"
+        return f"Noted · #{parsed.task_number} {self._short_title(parsed.title)}"
 
     async def _complete_task(self, user: User, task_number: int | None) -> str:
         if not task_number:
@@ -224,7 +237,7 @@ class CaptureService:
         if not task:
             return f"No task #{task_number} found."
         if task.status == "done":
-            return f"Task #{task_number} is already done."
+            return f"Already done · #{task_number}"
         task.status = "done"
         self._db.add(
             TaskEvent(task_id=task.id, event_type="completed_from_whatsapp", payload={})
@@ -235,13 +248,13 @@ class CaptureService:
         except Exception:
             logger.exception("WorkFlowy complete failed for task #%s", task_number)
 
-        return f"Done — #{task_number}: {task.title}"
+        return f"Done · #{task_number} {self._short_title(task.title)}"
 
     def _list_tasks(self, user: User, bucket: str) -> str:
         tz = ZoneInfo(self._settings.app_timezone)
         today = datetime.now(tz).date()
         query = select(Task).where(Task.user_id == user.id, Task.status != "done")
-        tasks = list(self._db.scalars(query.order_by(Task.display_number.desc()).limit(20)))
+        tasks = list(self._db.scalars(query.order_by(Task.display_number.desc()).limit(40)))
 
         if bucket == "today":
             tasks = [
@@ -250,12 +263,24 @@ class CaptureService:
                 if t.status in {"inbox", "today", "scheduled"}
                 and (t.due_at is None or t.due_at.astimezone(tz).date() <= today)
             ]
+        elif bucket == "tomorrow":
+            tomorrow = today.fromordinal(today.toordinal() + 1)
+            tasks = [
+                t
+                for t in tasks
+                if t.status != "done"
+                and (
+                    (t.due_at is not None and t.due_at.astimezone(tz).date() <= tomorrow)
+                    or t.status in {"inbox", "today", "scheduled"}
+                )
+            ]
 
-        if not tasks:
+        visible = [t for t in tasks if not _URL_ONLY_RE.match((t.title or "").strip())]
+        if not visible:
             return f"No tasks for `{bucket}`."
 
-        lines = [f"*{bucket}* ({len(tasks)})"]
-        for task in reversed(tasks[:10]):
+        lines = [f"*{bucket}* ({len(visible)})"]
+        for task in reversed(visible[:12]):
             due = ""
             if task.due_at:
                 due = f" — {task.due_at.astimezone(tz).strftime('%d %b %H:%M')}"
@@ -269,13 +294,14 @@ class CaptureService:
                 select(Task)
                 .where(Task.user_id == user.id, Task.status != "done")
                 .order_by(Task.display_number.desc())
-                .limit(10)
+                .limit(15)
             )
         )
-        if not open_tasks:
+        visible = [t for t in open_tasks if not _URL_ONLY_RE.match((t.title or "").strip())]
+        if not visible:
             return "Nothing open right now. Inbox zero?"
         lines = ["*Digest*"]
-        for task in reversed(open_tasks):
+        for task in reversed(visible[:10]):
             due = ""
             if task.due_at:
                 due = f" — {task.due_at.astimezone(tz).strftime('%d %b %H:%M')}"
@@ -303,7 +329,27 @@ class CaptureService:
         )
         if llm_text:
             return llm_text.strip()
-        return f"No LLM reflection available for `{topic}`. Try again when Ollama is reachable."
+        return (
+            f"Couldn't reflect on `{topic}` right now (assistant offline). "
+            "Try again shortly, or send `digest`."
+        )
+
+    async def _ask(self, user: User, question: str) -> str:
+        q = (question or "").strip()
+        if not q:
+            return "Ask me anything about your tasks or context — or send `help`."
+        context_text = self._context_bundle(user)
+        llm_text = await self._ollama.generate_ask(
+            question=q,
+            context_text=context_text,
+            now_iso=self._now_iso(),
+        )
+        if llm_text:
+            return llm_text.strip()
+        return (
+            "Couldn't reach the assistant just now. "
+            "Try `digest`, `reflect <topic>`, or `todo …`."
+        )
 
     async def _send_reply(self, chat_id: str, text: str) -> None:
         outbound = OutboundMessage(

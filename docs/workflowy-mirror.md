@@ -13,8 +13,7 @@ Everything is fractal — use the tree, not flat titles stuffed with metadata.
 | Layer | Where | Role |
 |-------|--------|------|
 | **Bucket** | `Inbox` / `Today` / `Waiting` / … | Status column (folder) |
-| **Task node** | Child of bucket | Title + `layoutMode: todo` |
-| **System children** | Under task node | Machine metadata (id, due, source) |
+| **Task node** | Child of bucket | Title + `layoutMode: todo` + compact **note** metadata |
 | **Context children** | Under task node | Human + monsoon follow-ups, links, snippets |
 
 When you follow up on a task — in WorkFlowy or via WhatsApp — **new content attaches
@@ -28,10 +27,7 @@ under the same task node**, not as a sibling or a new top-level bullet.
 Personal Capture & Reminder
 └── Today
     └── Call bank about wire transfer          ← task (todo)
-        ├── id: T18                            ← system (monsoon)
-        ├── source: whatsapp
-        ├── due: 2026-07-08 10:00
-        ├── status: waiting
+        │   note: T18 · whatsapp · waiting · due 2026-07-08 10:00
         ├── [2026-07-07 14:22] spoke to agent, case #44921
         ├── link: https://bank.com/status
         ├── waiting: callback promised Thursday
@@ -49,8 +45,7 @@ a WA message or email to task #18.
 
 | Event | WorkFlowy action |
 |-------|------------------|
-| Task created | Create todo node under bucket; store `tasks.workflowy_node_id` |
-| Task created | Append system children (`id: T{n}`, `source`, `due`, `status`) |
+| Task created | Create todo node under bucket with compact `note` (`T{n} · source · status · due`); store `tasks.workflowy_node_id` |
 | Task status / bucket change | Move task node to new bucket parent |
 | Task completed | Mark todo complete; move under `Done` |
 | **Follow-up / context** | `POST /api/v1/nodes` with `parent_id = workflowy_node_id` |

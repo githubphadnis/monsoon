@@ -163,7 +163,10 @@ def _fetch_wa_lines(
     stmt = (
         select(WaMessage, WaChat.name)
         .join(WaChat, WaMessage.chat_uuid == WaChat.id)
-        .where(WaMessage.session == session)
+        .where(
+            WaMessage.session == session,
+            or_(WaMessage.from_me.is_(False), WaMessage.from_me.is_(None)),
+        )
     )
     if topic:
         pattern = f"%{topic}%"
@@ -175,15 +178,29 @@ def _fetch_wa_lines(
         )
 
     rows = db.execute(
-        stmt.order_by(WaMessage.message_ts.desc().nullslast(), WaMessage.indexed_at.desc()).limit(30)
+        stmt.order_by(WaMessage.message_ts.desc().nullslast(), WaMessage.indexed_at.desc()).limit(40)
     ).all()
 
     lines: list[str] = []
     message_ids: list[str] = []
     for msg, chat_name in rows:
+        body = (msg.body or "").strip()
+        if _is_bot_noise_body(body):
+            continue
         message_ids.append(msg.waha_message_id)
         lines.append(_format_wa_line(msg, chat_name))
+        if len(lines) >= 20:
+            break
     return lines, message_ids
+
+
+def _is_bot_noise_body(body: str) -> bool:
+    """Skip monsoon outbound / help text that pollutes digests."""
+    if not body:
+        return True
+    from app.services.outbound_guard import is_bot_reply_text
+
+    return is_bot_reply_text(body)
 
 
 def _format_wa_line(msg: WaMessage, chat_name: str | None) -> str:

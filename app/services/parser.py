@@ -1,4 +1,4 @@
-"""Command parsing — regex first, Ollama fallback."""
+"""Command parsing — regex first, Ollama fallback, ask for free-text chat."""
 
 import re
 from datetime import datetime, timedelta
@@ -30,6 +30,16 @@ DIGEST_RE = re.compile(r"^(?:digest(?:\s+now)?|summary)\s*$", re.IGNORECASE)
 REFLECT_RE = re.compile(r"^reflect\s+(.+)$", re.IGNORECASE)
 NOTE_ON_TASK_RE = re.compile(r"^note\s+#?(\d+)\s+(.+)$", re.IGNORECASE)
 HELP_RE = re.compile(r"^(?:help|\?|commands)\s*$", re.IGNORECASE)
+
+QUESTION_RE = re.compile(
+    r"(?:\?$)|^(?:what|why|how|when|where|who|which|elaborate|explain|tell\s+me|"
+    r"ok\s+what|what\s+about|can\s+you|could\s+you|please\s+(?:explain|tell|summarize))\b",
+    re.IGNORECASE,
+)
+
+_COMMAND_KINDS = frozenset(
+    {"todo", "note", "task_note", "done", "list", "digest", "reflect", "help"}
+)
 
 RELATIVE_RE = re.compile(
     r"\b(tomorrow|today)\b(?:\s+at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?",
@@ -81,6 +91,13 @@ def _capture_from_match(match: re.Match[str], settings: Settings, *, kind: str, 
     )
 
 
+def looks_like_question(text: str) -> bool:
+    body = text.strip()
+    if not body:
+        return False
+    return bool(QUESTION_RE.search(body))
+
+
 def parse_with_regex(text: str, settings: Settings) -> ParsedCapture | None:
     body = text.strip()
     if not body:
@@ -122,18 +139,24 @@ def parse_with_regex(text: str, settings: Settings) -> ParsedCapture | None:
     return None
 
 
+def _as_ask(text: str) -> ParsedCapture:
+    return ParsedCapture(kind="ask", title=text.strip(), raw_command=text.strip())
+
+
 async def parse_capture(text: str, settings: Settings) -> ParsedCapture:
-    regex_result = parse_with_regex(text, settings)
+    body = text.strip()
+    regex_result = parse_with_regex(body, settings)
     if regex_result and regex_result.kind != "unknown":
         return regex_result
 
+    if looks_like_question(body):
+        return _as_ask(body)
+
     ollama = OllamaClient(settings)
     now_iso = _local_now(settings).isoformat()
-    llm_result = await ollama.parse_capture(text, now_iso)
-    if llm_result:
+    llm_result = await ollama.parse_capture(body, now_iso)
+    if llm_result and llm_result.kind in _COMMAND_KINDS:
         return llm_result
 
-    if regex_result:
-        return regex_result
-
-    return ParsedCapture(kind="todo", title=text.strip(), status="inbox")
+    # Free text → conversational ask (do not auto-create junk todos).
+    return _as_ask(body)

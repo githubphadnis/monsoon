@@ -1,35 +1,31 @@
 # BREADCRUMBS — monsoon
 
-**Updated:** 2026-07-08 10:35
+**Updated:** 2026-07-10
 
 ## Done
 
-- Digest/reflect prompts tightened (ban thank-you / category fluff)
-- Reminders: `remind_at` → WhatsApp; clear after send (MS-04)
-- Background sync sped up for same-day catch-up (Gmail 5m×5 pages, WA 5m×5 chats)
-- Gmail: resume incomplete list even after mid-pilot historyId; All Mail when label empty
-- Docs: gmail-ingestion, whatsapp-backfill, portainer-env, ROADMAP
+- Assistant UX polish from live WhatsApp sample:
+  - Digests no longer feed `## Entities` (stops phone/email dumps)
+  - Free-text → conversational `ask` (Ollama + context slice)
+  - Bad digest post-filter; quieter acks; list hides URL-only titles
+  - WorkFlowy metadata → node note (no system child bullets)
+  - WA slice skips `from_me` + bot-reply noise
 
 ## Operator after redeploy
 
-1. **Portainer:** ensure `GMAIL_SYNC_LABEL` is **unset/empty** (not INBOX) so Archive is indexed.
-2. Redeploy `main`.
-3. Watch:
-   - `curl -s http://127.0.0.1:8080/health/scheduler | python3 -m json.tool`
-   - `curl -s http://127.0.0.1:8080/health/gmail-index | python3 -m json.tool`
-   - `curl -s http://127.0.0.1:8080/health/wa-index | python3 -m json.tool`
-4. WhatsApp: `digest` — should be concrete, not "Thank you for sharing…"
-5. Smoke reminder: `remind me to test monsoon ping` with a near due (or temporarily set `remind_at` in DB)
-
-## Optional Spam/Trash
-
-`GMAIL_INCLUDE_SPAM_TRASH=true` in Portainer if you want those folders too.
+1. Redeploy `main` on Portainer (pull latest GHCR).
+2. WhatsApp smoke:
+   - `digest` → prose about open tasks, **no** phone/email lists
+   - `elaborate on …` / `ok what about now?` → assistant answer (not "I didn't catch that")
+   - `todo buy milk` → `Saved · #N buy milk`
+   - `list today` → no bare MSN URL rows for new captures
+3. Optional: delete historical junk task #86 (MSN URL) in DB/WorkFlowy manually.
 
 ## Then
 
-- Switch back to Griham once indexes are running and digest looks sane
-- Later: MS-08 snooze; auto-link; morning digest cron
+- Ephemeral bot-message delete (WAHA API spike) — deferred
+- MS-08 snooze; auto-link; morning digest cron
 
 ## Branch
 
-- `main` — push this session
+- `main` — push when ready

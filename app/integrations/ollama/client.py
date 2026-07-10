@@ -14,7 +14,7 @@ logger = logging.getLogger("monsoon.ollama")
 
 PARSE_PROMPT = """You parse personal capture messages into JSON only.
 Return a single JSON object with keys:
-- kind: one of todo, note, done, list, digest, help, unknown
+- kind: one of todo, note, done, list, digest, reflect, help, unknown
 - title: string or null
 - notes: string or null
 - task_number: integer or null (for done/list by id)
@@ -23,27 +23,66 @@ Return a single JSON object with keys:
 - status: inbox|today|waiting|scheduled or null
 - priority: low|normal|high or null
 
-No markdown. No explanation. JSON only."""
+Use kind=todo only for clear task creation. Use kind=unknown for questions
+or conversational messages. No markdown. No explanation. JSON only."""
 
 DIGEST_INSTRUCTION = (
-    "You are writing a personal action digest for WhatsApp — not a meeting summary. "
+    "You are writing a personal action digest for WhatsApp — not a meeting summary "
+    "and not an entity-extraction report.\n"
     "Rules:\n"
-    "- Lead with 2–4 concrete items by task title / email subject / WA thread — never invent.\n"
-    "- Prefer open tasks first; pull in email/WA only when it clearly relates or is time-sensitive.\n"
-    "- End with exactly 1–2 next actions the user can do today.\n"
-    "- Max 700 chars. Plain text. Short lines OK.\n"
-    "- NEVER: thank the user, say 'here's a summary', categorize into Insurance/Health/"
-    "Personal Communication buckets, list raw emails/phones, or offer further assistance.\n"
-    "- NEVER lead with 'Task #N', '#N', or 'id:T'."
+    "- Write 2–4 short connected paragraphs (prose). Use *bold* sparingly for emphasis only.\n"
+    "- Lead with open tasks and time-sensitive items by their titles — never invent.\n"
+    "- Mention email/WA only when it changes what to do today.\n"
+    "- End with exactly 1–2 clear next actions.\n"
+    "- Max ~1000 characters.\n"
+    "- NEVER: thank the user; say 'here's a summary'; categorize into Insurance/Health/"
+    "Personal buckets; list phones, emails, names, or vehicles; use headings like "
+    "'Entities Identified' / 'Phone Numbers' / 'Email Addresses'; dump raw chat "
+    "transcripts; offer further assistance; lead with Task #N / #N / id:T."
 )
 
 REFLECT_INSTRUCTION = (
     "Reflect on the named topic using only the provided context. "
-    "Structure: (1) what's active — name concrete items (2) blockers/risks "
-    "(3) one next step. Max 900 chars. Plain WhatsApp text. "
-    "Do not thank the user, do not invent facts, do not dump addresses/phones. "
-    "Never lead with 'Task #N', '#N', or 'id:T'."
+    "Write flowing WhatsApp prose (2–3 short paragraphs) covering: what's active, "
+    "blockers/risks, and one next step — not labeled staccato headers. "
+    "Max ~1000 chars. Do not thank the user, invent facts, dump phones/emails, "
+    "or lead with Task #N / #N / id:T."
 )
+
+ASK_INSTRUCTION = (
+    "You are monsoon, a personal assistant answering over WhatsApp. "
+    "Use the provided context (tasks, notes, email, WhatsApp) when relevant. "
+    "Answer in clear connected prose — 1–3 short paragraphs. "
+    "If the context does not contain enough to answer, say so briefly and suggest "
+    "`digest`, `reflect <topic>`, or `todo …`. "
+    "Never dump phone/email lists, never thank the user, never invent facts."
+)
+
+_BAD_DIGEST_MARKERS = (
+    "entities identified",
+    "entity information",
+    "entity information extraction",
+    "*phone numbers*",
+    "phone numbers:",
+    "*email addresses*",
+    "email addresses:",
+    "thank you for sharing",
+    "here's a summary",
+    "here is a summary",
+)
+
+
+def looks_like_bad_digest(text: str) -> bool:
+    """True when the model regurgitated entities / fluff instead of an action digest."""
+    normalized = (text or "").strip()
+    if not normalized:
+        return True
+    lower = normalized.lower()
+    if any(marker in lower for marker in _BAD_DIGEST_MARKERS):
+        return True
+    if normalized.count("@") >= 5:
+        return True
+    return False
 
 
 class OllamaClient:
@@ -114,7 +153,11 @@ class OllamaClient:
     async def generate_digest(self, *, context_text: str, now_iso: str) -> str | None:
         system = f"{self._settings.monsoon_soul_prompt}\n\n{DIGEST_INSTRUCTION}"
         user_prompt = f"Current time: {now_iso}\n\nContext:\n{context_text}"
-        return await self.generate_text(user_prompt=user_prompt, system_prompt=system)
+        text = await self.generate_text(user_prompt=user_prompt, system_prompt=system)
+        if text and looks_like_bad_digest(text):
+            logger.warning("Ollama digest rejected as entity/fluff dump")
+            return None
+        return text
 
     async def generate_reflect(
         self, *, topic: str, context_text: str, now_iso: str
@@ -122,6 +165,20 @@ class OllamaClient:
         system = f"{self._settings.monsoon_soul_prompt}\n\n{REFLECT_INSTRUCTION}"
         user_prompt = (
             f"Topic: {topic}\nCurrent time: {now_iso}\n\nContext:\n{context_text}"
+        )
+        text = await self.generate_text(user_prompt=user_prompt, system_prompt=system)
+        if text and looks_like_bad_digest(text):
+            logger.warning("Ollama reflect rejected as entity/fluff dump")
+            return None
+        return text
+
+    async def generate_ask(
+        self, *, question: str, context_text: str, now_iso: str
+    ) -> str | None:
+        system = f"{self._settings.monsoon_soul_prompt}\n\n{ASK_INSTRUCTION}"
+        user_prompt = (
+            f"Current time: {now_iso}\n\nContext:\n{context_text}\n\n"
+            f"Question:\n{question.strip()}"
         )
         return await self.generate_text(user_prompt=user_prompt, system_prompt=system)
 

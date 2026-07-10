@@ -1,5 +1,7 @@
 """Unit tests for command parser."""
 
+import pytest
+
 from app.config import Settings
 from app.services.parser import parse_with_regex
 
@@ -93,3 +95,38 @@ def test_help_aliases():
         parsed = parse_with_regex(cmd, settings)
         assert parsed is not None, cmd
         assert parsed.kind == "help"
+
+
+@pytest.mark.asyncio
+async def test_free_text_question_becomes_ask():
+    from unittest.mock import AsyncMock, patch
+
+    from app.services.parser import parse_capture
+
+    settings = Settings()
+    with patch(
+        "app.services.parser.OllamaClient.parse_capture",
+        new=AsyncMock(return_value=None),
+    ):
+        parsed = await parse_capture("elaborate on what berberich is saying please", settings)
+
+    assert parsed.kind == "ask"
+    assert "berberich" in (parsed.title or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_unknown_ollama_becomes_ask_not_todo():
+    from unittest.mock import AsyncMock, patch
+
+    from app.schemas.capture import ParsedCapture
+    from app.services.parser import parse_capture
+
+    settings = Settings()
+    with patch(
+        "app.services.parser.OllamaClient.parse_capture",
+        new=AsyncMock(return_value=ParsedCapture(kind="unknown")),
+    ):
+        parsed = await parse_capture("ok what about now", settings)
+
+    assert parsed.kind == "ask"
+

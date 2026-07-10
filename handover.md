@@ -2,24 +2,23 @@
 
 ## Last worked on
 
-2026-07-08 — digest prompt harden; reminders; same-day background Gmail/WA indexing.
+2026-07-10 — WhatsApp assistant UX: ask path, digest anti-dump, quieter acks, WorkFlowy notes.
 
 ## Current state / WIP
 
-- **Robot:** Gmail pilot: 100 msgs / 85 threads (incomplete list resume fixed).
-- **Background jobs:** Gmail, WA, WorkFlowy reverse, reminder poller — `/health/scheduler`.
-- **LLM:** title-first context + tightened digest/reflect instructions.
-- **WorkFlowy:** push + reverse sync; task context in LLM bundle.
+- **Robot:** Gmail + WA background indexing; WorkFlowy push + reverse; reminders.
+- **LLM:** digest / reflect / **ask** share context slice (tasks, notes, email, WA — **no entities**).
+- **UX:** prose digests; free-text questions answered; short `Saved · #N` acks.
 
 ## Operator priorities
 
 1. Redeploy latest `main`.
-2. Clear `GMAIL_SYNC_LABEL` if set to `-INBOX` — leave empty for Archive/All Mail.
-3. Leave stack running; watch gmail/wa index counts climb through the day.
-4. Retest `digest`.
+2. Smoke `digest` + a free-text question + `todo` + `list`.
+3. Leave indexes running.
 
-## Next product work (defer / Griham-compatible pause)
+## Next product work
 
+- WAHA ephemeral delete of bot replies (optional)
 - MS-08 snooze
 - Auto-link / active task (MS-06/07)
 - Morning outbound digest

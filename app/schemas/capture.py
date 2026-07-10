@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 
 class ParsedCapture(BaseModel):
     kind: str = Field(
-        description="todo | note | task_note | done | list | digest | reflect | help | unknown"
+        description=(
+            "todo | note | task_note | done | list | digest | reflect | ask | help | unknown"
+        )
     )
     title: str | None = None
     notes: str | None = None
