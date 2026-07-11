@@ -114,10 +114,13 @@ async def waha_webhook(
     )
     if not phone:
         logger.warning(
-            "Rejected sender from=%s from_me=%s chat_id=%s (check ALLOWED_WHATSAPP_NUMBERS + LID alt)",
+            "Rejected sender from=%s from_me=%s chat_id=%s participant=%s "
+            "(check ALLOWED_WHATSAPP_NUMBERS; group senders need participant phone)",
             sender,
             payload.from_me,
             chat_id,
+            (payload_extra or {}).get("participant")
+            or ((payload_extra or {}).get("_data") or {}).get("key", {}).get("participant"),
         )
         raise HTTPException(status_code=403, detail="Sender not allowed")
 

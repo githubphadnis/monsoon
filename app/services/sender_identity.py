@@ -30,37 +30,52 @@ def _phone_candidates_from_payload(
     """Collect possible phone digits for allowlist matching.
 
     WhatsApp often delivers peers as ``@lid``. The real ``@c.us`` / ``@s.whatsapp.net``
-    JID usually sits in ``_data.key.remoteJidAlt`` (inbound and self-chat).
-    """
-    candidates: list[str] = [phone_from_chat_id(from_id)]
+    JID usually sits in ``participantAlt`` / ``remoteJidAlt``.
 
+    For **groups**, ``remoteJid`` is the group (``…@g.us``) — that is NOT a sender phone.
+    Prefer ``participant`` / ``participantAlt`` / ``author`` first.
+    """
+    candidates: list[str] = []
     extra = payload_extra or {}
     data = extra.get("_data") if isinstance(extra.get("_data"), dict) else {}
     key = data.get("key") if isinstance(data.get("key"), dict) else {}
-    for field in ("remoteJidAlt", "remoteJid", "participant", "participantAlt"):
-        value = key.get(field) or extra.get(field)
-        if isinstance(value, str) and value and not value.endswith("@lid"):
-            candidates.append(phone_from_chat_id(value))
 
-    # Top-level participant (groups / some WAHA shapes)
-    for field in ("participant", "author"):
-        value = extra.get(field)
-        if isinstance(value, str) and value and not value.endswith("@lid"):
-            candidates.append(phone_from_chat_id(value))
+    def _add(jid: object) -> None:
+        if not isinstance(jid, str) or not jid.strip():
+            return
+        j = jid.strip()
+        # Group / broadcast JIDs are never sender phones
+        if j.endswith("@g.us") or j.endswith("@broadcast"):
+            return
+        if j.endswith("@lid"):
+            return
+        phone = phone_from_chat_id(j)
+        if phone and phone not in candidates:
+            # Skip obvious group-id shaped numbers mistakenly scraped
+            if len(phone) > 15:
+                return
+            candidates.append(phone)
+
+    # 1) Group sender fields first
+    for field in ("participantAlt", "participant", "author"):
+        _add(key.get(field))
+        _add(extra.get(field))
+
+    # 2) Direct from / alts (1:1 and some WAHA shapes)
+    _add(from_id)
+    for field in ("remoteJidAlt", "senderAlt", "senderPn"):
+        _add(key.get(field))
+        _add(extra.get(field))
+
+    # remoteJid only if not a group (already filtered in _add)
+    _add(key.get("remoteJid"))
 
     if from_me and settings.monsoon_allow_self_chat:
         me = body.get("me")
         if isinstance(me, dict) and me.get("id"):
-            candidates.append(phone_from_chat_id(str(me["id"])))
+            _add(str(me["id"]))
 
-    # Preserve order, drop empties / dupes
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for phone in candidates:
-        if phone and phone not in seen:
-            seen.add(phone)
-            ordered.append(phone)
-    return ordered
+    return candidates
 
 
 def resolve_sender_phone(

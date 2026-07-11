@@ -27,8 +27,55 @@ def test_resolve_sender_phone_self_chat_lid():
     assert phone == "918291882204"
 
 
+def test_resolve_sender_phone_group_participant():
+    """Group messages: remoteJid is @g.us; sender phone is participant."""
+    settings = Settings(
+        allowed_whatsapp_numbers="918291882204,46704098198",
+        monsoon_allow_self_chat=True,
+    )
+    phone = resolve_sender_phone(
+        from_id="120363410556549299@g.us",
+        from_me=False,
+        body={"me": {"id": "918291882204@c.us"}},
+        payload_extra={
+            "participant": "46704098198@c.us",
+            "_data": {
+                "key": {
+                    "remoteJid": "120363410556549299@g.us",
+                    "participant": "46704098198@c.us",
+                }
+            },
+        },
+        settings=settings,
+    )
+    assert phone == "46704098198"
+
+
+def test_resolve_sender_phone_group_participant_alt():
+    settings = Settings(
+        allowed_whatsapp_numbers="46704098198",
+        monsoon_allow_self_chat=True,
+    )
+    phone = resolve_sender_phone(
+        from_id="120363410556549299@g.us",
+        from_me=False,
+        body={},
+        payload_extra={
+            "_data": {
+                "key": {
+                    "remoteJid": "120363410556549299@g.us",
+                    "participant": "555666777@lid",
+                    "participantAlt": "46704098198@s.whatsapp.net",
+                }
+            },
+        },
+        settings=settings,
+    )
+    assert phone == "46704098198"
+
+
 def test_resolve_sender_phone_inbound_peer_lid_via_alt():
-    """Son's inbound message often arrives as @lid; phone is in remoteJidAlt."""
+    """1:1 inbound often arrives as @lid; phone is in remoteJidAlt."""
     settings = Settings(
         allowed_whatsapp_numbers="918291882204,919876543210",
         monsoon_allow_self_chat=True,
@@ -43,6 +90,7 @@ def test_resolve_sender_phone_inbound_peer_lid_via_alt():
         settings=settings,
     )
     assert phone == "919876543210"
+
 
 
 def test_resolve_sender_phone_rejects_unknown():

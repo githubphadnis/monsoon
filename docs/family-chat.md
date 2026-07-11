@@ -1,90 +1,88 @@
-# Family / peer chat — son on your 1:1
+# Family / group chat — monsoon with your son
 
-monsoon does **not** open a separate WhatsApp account for your son. WAHA is paired to
-**your** number. Every message that hits that WhatsApp (including his 1:1 with you)
-is delivered to the webhook. monsoon then **filters** by allowlist.
+monsoon does **not** open a separate WhatsApp account. WAHA is paired to **your**
+number. Messages in allowed chats hit the webhook; monsoon filters by allowlist.
 
-```text
-Son's phone ──WhatsApp──► Your WhatsApp (WAHA session)
-                                │
-                                ▼
-                         monsoon webhook
-                                │
-              ┌─────────────────┴─────────────────┐
-              │ chat in ALLOWED_WHATSAPP_CHAT_IDS? │
-              │ sender in ALLOWED_WHATSAPP_NUMBERS?│
-              └─────────────────┬─────────────────┘
-                                │ yes
-                                ▼
-                     reply in the same 1:1 chat
-```
+## Two different allowlists
 
-## Why “nothing happened”
+| Env | Meaning | Example |
+|-----|---------|---------|
+| `ALLOWED_WHATSAPP_NUMBERS` | **People** who may command monsoon (digits only, no `+`) | `918291882204,918291884406,46704098198` |
+| `ALLOWED_WHATSAPP_CHAT_IDS` | **Conversations** where monsoon replies | self-chat `…@c.us` **and/or** group `…@g.us` |
 
-Usually one of:
-
-1. **Chat not on allowlist** — need `<son_digits>@c.us` in `ALLOWED_WHATSAPP_CHAT_IDS`
-2. **Number not on allowlist** — same digits in `ALLOWED_WHATSAPP_NUMBERS`
-3. **Wrong JID** — WhatsApp often uses opaque `@lid`; monsoon maps via `remoteJidAlt`.
-   Still put the **real phone** `@c.us` in env (not the lid).
-4. **Stack not redeployed** after env change
-5. **He messaged a different WhatsApp** than the one WAHA is logged into
-
-## Portainer env (example)
+### Group “Todo” (recommended family surface)
 
 ```env
-ALLOWED_WHATSAPP_NUMBERS=918291882204,91XXXXXXXXXX
-ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us,91XXXXXXXXXX@c.us
+ALLOWED_WHATSAPP_NUMBERS=918291882204,918291884406,46704098198
+ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us,120363410556549299@g.us
 MONSOON_ALLOW_SELF_CHAT=true
 ```
 
-- First entry = you (Message yourself)
-- Second = son (your existing 1:1)
+- `918291882204@c.us` = your Message yourself  
+- `120363410556549299@g.us` = WhatsApp group named **Todo**  
 
-Redeploy after changing env.
+Do **not** put member phones in `CHAT_IDS` for a group — only the group JID.
 
-## Find his chat id
+### 1:1 instead of a group
 
-On notcoolio:
-
-```bash
-curl -s -H "X-Api-Key: $WAHA_API_KEY" \
-  "http://127.0.0.1:3000/api/prakalp/chats?limit=30&sortBy=conversationTimestamp&sortOrder=desc" \
-  | python3 -m json.tool | less
+```env
+ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us,46704098198@c.us
 ```
 
-Look for his name / number. Prefer an id ending in `@c.us` (or `@s.whatsapp.net` — monsoon
-normalizes). If you only see `@lid`, still use his real phone as `91…@c.us` in env;
-inbound payloads usually include `remoteJidAlt` with the phone JID.
+## Find group id (notcoolio)
 
-Confirm monsoon loaded the allowlist:
+WAHA on host port **13000** (not 3000). Paste API key from Portainer:
+
+```bash
+curl -sS -H "X-Api-Key: PASTE_KEY" \
+  "http://127.0.0.1:13000/api/prakalp/chats?limit=100&sortBy=conversationTimestamp&sortOrder=desc" \
+  | python3 -c "
+import json,sys
+data=json.loads(sys.stdin.read())
+chats=data if isinstance(data,list) else data.get('chats') or data.get('data') or []
+for c in chats:
+    name=c.get('name') or c.get('subject') or ''
+    cid=c.get('id') or c.get('jid') or ''
+    if 'todo' in str(name).lower() or str(cid).endswith('@g.us'):
+        print(repr(name), cid)
+"
+```
+
+## Verify after Portainer redeploy
 
 ```bash
 curl -s http://127.0.0.1:8080/health/ready | python3 -m json.tool
-# or
-docker logs monsoon-app --tail 100 | grep -E 'chat_not_allowed|Rejected sender|Processing capture'
 ```
 
-Have him send `help` in the 1:1, then watch logs for `Processing capture` vs `chat_not_allowed`
-vs `Rejected sender`.
+`allowed_whatsapp_chat_ids` must include `120363410556549299@g.us`.
 
-## Behaviour rules
+Have him send `help` in **Todo**, then:
+
+```bash
+docker logs monsoon-app --tail 80 | grep -E 'chat_not_allowed|Rejected sender|Processing capture|from_me_peer'
+```
+
+| Log | Fix |
+|-----|-----|
+| `chat_not_allowed` … `chat_id=120363…@g.us` | Add that exact id to `CHAT_IDS`, redeploy |
+| `Rejected sender` … `participant=…` | Add his real digits to `NUMBERS` (e.g. `46704098198`) |
+| `Processing capture` | Allowlist OK — check WAHA send / session WORKING |
+| No lines | Webhook not firing — session/webhook |
+
+## Behaviour
 
 | Who / where | monsoon |
 |-------------|---------|
-| You → Message yourself | Commands + digests (your tasks) |
-| Son → your 1:1 | Commands (his own task user) |
-| You → typing in his 1:1 | **Ignored** (`from_me_peer`) — family chat stays human |
-| Anyone else | Ignored (not on allowlist) |
+| You → Message yourself | Your tasks |
+| Anyone allowlisted → Todo group | Their own task user; reply in the group |
+| You → typing in Todo | Ignored (`from_me_peer`) so family chat stays human |
 
 ## Smoke
 
-From **his** phone, in **your** 1:1:
+In **Todo**, from his phone:
 
 ```text
 help
-todo buy notebooks
+todo call salon car detailing
 list today
 ```
-
-You should see a monsoon reply in that same chat. Your Message-yourself thread stays separate.
