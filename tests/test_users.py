@@ -137,9 +137,48 @@ def test_inbound_peer_chat_id_from_alt():
 
     chat = resolve_conversation_chat_id(
         "555666777888@lid",
-        {"_data": {"key": {"remoteJid": "555666777888@lid", "remoteJidAlt": "919876543210@s.whatsapp.net"}}},
+        {
+            "_data": {
+                "key": {
+                    "remoteJid": "555666777888@lid",
+                    "remoteJidAlt": "919876543210@s.whatsapp.net",
+                }
+            }
+        },
         from_me=False,
         to_id="918291882204@c.us",
         me_id="918291882204@c.us",
     )
     assert chat == "919876543210@c.us"
+
+
+def test_group_chat_id_prefers_g_us_over_alt():
+    from app.services.sender_identity import resolve_conversation_chat_id
+
+    chat = resolve_conversation_chat_id(
+        "46704098198@c.us",
+        {
+            "_data": {
+                "key": {
+                    "remoteJid": "120363410556549299@g.us",
+                    "remoteJidAlt": "46704098198@s.whatsapp.net",
+                    "participant": "46704098198@c.us",
+                }
+            }
+        },
+        from_me=False,
+        me_id="918291882204@c.us",
+    )
+    assert chat == "120363410556549299@g.us"
+
+
+def test_resolve_group_participant_key_lid_fallback():
+    from app.services.sender_identity import resolve_group_participant_key
+
+    key = resolve_group_participant_key(
+        from_id="120363410556549299@g.us",
+        payload_extra={
+            "_data": {"key": {"participant": "999888777@lid"}},
+        },
+    )
+    assert key == "lid:999888777"

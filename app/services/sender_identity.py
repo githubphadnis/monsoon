@@ -127,10 +127,69 @@ def _extract_remote_jid(payload_extra: dict[str, Any] | None) -> str | None:
     extra = payload_extra or {}
     data = extra.get("_data") if isinstance(extra.get("_data"), dict) else {}
     key = data.get("key") if isinstance(data.get("key"), dict) else {}
-    # Prefer phone JIDs over opaque @lid
-    for candidate in (key.get("remoteJidAlt"), key.get("remoteJid"), extra.get("from")):
+    candidates = [
+        key.get("remoteJid"),
+        key.get("remoteJidAlt"),
+        extra.get("from"),
+        extra.get("chatId"),
+    ]
+    # 1) Group chats — never collapse to a member phone via remoteJidAlt
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.endswith("@g.us"):
+            return candidate
+    # 2) Real phone JIDs (1:1)
+    for candidate in candidates:
+        if not isinstance(candidate, str) or not candidate:
+            continue
+        if candidate.endswith("@lid") or candidate.endswith("@g.us"):
+            continue
+        return _to_cus_jid(candidate)
+    # 3) Opaque lid last
+    for candidate in candidates:
         if isinstance(candidate, str) and candidate:
             return _to_cus_jid(candidate)
+    return None
+
+
+def resolve_group_participant_key(
+    *,
+    from_id: str,
+    payload_extra: dict[str, Any] | None,
+) -> str | None:
+    """Best-effort sender key for an allowlisted group (phone preferred, else lid digits)."""
+    extra = payload_extra or {}
+    data = extra.get("_data") if isinstance(extra.get("_data"), dict) else {}
+    key = data.get("key") if isinstance(data.get("key"), dict) else {}
+
+    raw_values: list[str] = []
+    for field in (
+        "participantAlt",
+        "participant",
+        "author",
+        "senderPn",
+        "senderAlt",
+    ):
+        for source in (key, extra):
+            value = source.get(field)
+            if isinstance(value, str) and value.strip():
+                raw_values.append(value.strip())
+    if isinstance(from_id, str) and from_id.strip():
+        raw_values.append(from_id.strip())
+
+    # Prefer real phone JIDs
+    for j in raw_values:
+        if j.endswith("@g.us") or j.endswith("@broadcast") or j.endswith("@lid"):
+            continue
+        phone = phone_from_chat_id(j)
+        if phone and len(phone) <= 15:
+            return phone
+
+    # Fall back to opaque lid so we still create a per-sender user row
+    for j in raw_values:
+        if j.endswith("@lid"):
+            lid = phone_from_chat_id(j)
+            if lid:
+                return f"lid:{lid}"
     return None
 
 

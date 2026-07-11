@@ -14,6 +14,7 @@ from app.services.sender_identity import (
     is_chat_allowed,
     is_self_chat,
     resolve_conversation_chat_id,
+    resolve_group_participant_key,
     resolve_sender_phone,
 )
 
@@ -112,6 +113,17 @@ async def waha_webhook(
         payload_extra=payload_extra,
         settings=settings,
     )
+    # Allowlisted groups: chat gate is enough — accept participant even without NUMBERS match
+    # (group senders often arrive as @lid without a phone alt).
+    if not phone and str(chat_id).endswith("@g.us"):
+        phone = resolve_group_participant_key(from_id=sender, payload_extra=payload_extra)
+        if phone:
+            logger.info(
+                "Group sender accepted via participant key chat_id=%s phone=%s from=%s",
+                chat_id,
+                phone,
+                sender,
+            )
     if not phone:
         logger.warning(
             "Rejected sender from=%s from_me=%s chat_id=%s participant=%s "
