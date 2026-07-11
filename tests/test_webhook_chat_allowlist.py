@@ -41,3 +41,12 @@ def test_incoming_uses_from_not_to():
     assert chat_id == "919999999999@c.us"
     settings = Settings(allowed_whatsapp_chat_ids="918291882204@c.us")
     assert not is_chat_allowed(chat_id, settings)
+
+
+def test_peer_chat_allowed_when_listed():
+    settings = Settings(
+        allowed_whatsapp_chat_ids="918291882204@c.us,919876543210@c.us",
+        allowed_whatsapp_numbers="918291882204,919876543210",
+    )
+    assert is_chat_allowed("919876543210@c.us", settings)
+    assert is_chat_allowed("919876543210@s.whatsapp.net", settings)

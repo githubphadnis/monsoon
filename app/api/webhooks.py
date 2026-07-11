@@ -12,6 +12,7 @@ from app.services.capture_service import CaptureService
 from app.services.outbound_guard import is_outbound_echo
 from app.services.sender_identity import (
     is_chat_allowed,
+    is_self_chat,
     resolve_conversation_chat_id,
     resolve_sender_phone,
 )
@@ -55,9 +56,6 @@ async def waha_webhook(
     else:
         payload = event.payload
 
-    if payload.from_me and not settings.monsoon_allow_self_chat:
-        return {"status": "ignored", "reason": "from_me"}
-
     if payload.has_media and not (payload.body or "").strip():
         return {"status": "ignored", "reason": "media_only"}
 
@@ -82,6 +80,19 @@ async def waha_webhook(
         me_id=me_id,
     )
 
+    # fromMe: only Message-yourself is a monsoon command surface.
+    # Outbound into a peer chat (e.g. dad typing in son's 1:1) must not trigger the bot.
+    if payload.from_me:
+        if not settings.monsoon_allow_self_chat:
+            return {"status": "ignored", "reason": "from_me"}
+        if not is_self_chat(chat_id, me_id):
+            logger.info(
+                "Ignored from_me in peer chat chat_id=%s me=%s",
+                chat_id,
+                me_id,
+            )
+            return {"status": "ignored", "reason": "from_me_peer"}
+
     # Chat-id gate first — never reply based on sender alone.
     if not is_chat_allowed(chat_id, settings):
         logger.info(
@@ -102,7 +113,12 @@ async def waha_webhook(
         settings=settings,
     )
     if not phone:
-        logger.warning("Rejected sender %s (from_me=%s)", sender, payload.from_me)
+        logger.warning(
+            "Rejected sender from=%s from_me=%s chat_id=%s (check ALLOWED_WHATSAPP_NUMBERS + LID alt)",
+            sender,
+            payload.from_me,
+            chat_id,
+        )
         raise HTTPException(status_code=403, detail="Sender not allowed")
 
     logger.info("Processing capture from=%s chat_id=%s phone=%s", sender, chat_id, phone)

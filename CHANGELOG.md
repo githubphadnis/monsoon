@@ -11,6 +11,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 - Conversational **`ask`** path: free-text / questions use Ollama + context slice instead of "I didn't catch that" or junk todos.
 - Digest/reflect post-filter rejects entity-dump / thank-you fluff and falls back to SQL digest.
+- Peer 1:1 (family) support: inbound `@lid` resolves via `remoteJidAlt`; `from_me` in non–self chats ignored (`docs/family-chat.md`).
 - Reminder scheduler: due `remind_at` → WhatsApp; clears after successful send (idempotent).
 - `GMAIL_INCLUDE_SPAM_TRASH`; All Mail when `GMAIL_SYNC_LABEL` empty (Archive included).
 - Roadmap build sequence MS-01…08; GitHub milestones V1.0 / V1.1 and issues [#1–#8](https://github.com/githubphadnis/monsoon/issues).

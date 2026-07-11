@@ -2,19 +2,20 @@
 
 ## Last worked on
 
-2026-07-10 — WhatsApp assistant UX: ask path, digest anti-dump, quieter acks, WorkFlowy notes.
+2026-07-10 — family 1:1: inbound LID fix + ignore from_me in peer chats; assistant UX polish.
 
 ## Current state / WIP
 
 - **Robot:** Gmail + WA background indexing; WorkFlowy push + reverse; reminders.
-- **LLM:** digest / reflect / **ask** share context slice (tasks, notes, email, WA — **no entities**).
-- **UX:** prose digests; free-text questions answered; short `Saved · #N` acks.
+- **LLM:** digest / reflect / **ask** share context slice (no entities).
+- **Family:** son can use existing 1:1 if both allowlists set; see `docs/family-chat.md`.
 
 ## Operator priorities
 
-1. Redeploy latest `main`.
-2. Smoke `digest` + a free-text question + `todo` + `list`.
-3. Leave indexes running.
+1. Commit/push LID + from_me_peer fix; redeploy.
+2. Confirm Portainer `ALLOWED_WHATSAPP_*` includes son phone + `…@c.us`.
+3. Smoke: son `help` in 1:1; check `docker logs monsoon-app` for `Processing capture`.
+4. You keep Message yourself for your own monsoon.
 
 ## Next product work
 

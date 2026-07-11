@@ -19,6 +19,50 @@ def is_allowed_sender(phone: str, settings: Settings) -> bool:
     return phone in allowed
 
 
+def _phone_candidates_from_payload(
+    *,
+    from_id: str,
+    from_me: bool | None,
+    body: dict[str, Any],
+    payload_extra: dict[str, Any] | None,
+    settings: Settings,
+) -> list[str]:
+    """Collect possible phone digits for allowlist matching.
+
+    WhatsApp often delivers peers as ``@lid``. The real ``@c.us`` / ``@s.whatsapp.net``
+    JID usually sits in ``_data.key.remoteJidAlt`` (inbound and self-chat).
+    """
+    candidates: list[str] = [phone_from_chat_id(from_id)]
+
+    extra = payload_extra or {}
+    data = extra.get("_data") if isinstance(extra.get("_data"), dict) else {}
+    key = data.get("key") if isinstance(data.get("key"), dict) else {}
+    for field in ("remoteJidAlt", "remoteJid", "participant", "participantAlt"):
+        value = key.get(field) or extra.get(field)
+        if isinstance(value, str) and value and not value.endswith("@lid"):
+            candidates.append(phone_from_chat_id(value))
+
+    # Top-level participant (groups / some WAHA shapes)
+    for field in ("participant", "author"):
+        value = extra.get(field)
+        if isinstance(value, str) and value and not value.endswith("@lid"):
+            candidates.append(phone_from_chat_id(value))
+
+    if from_me and settings.monsoon_allow_self_chat:
+        me = body.get("me")
+        if isinstance(me, dict) and me.get("id"):
+            candidates.append(phone_from_chat_id(str(me["id"])))
+
+    # Preserve order, drop empties / dupes
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for phone in candidates:
+        if phone and phone not in seen:
+            seen.add(phone)
+            ordered.append(phone)
+    return ordered
+
+
 def resolve_sender_phone(
     *,
     from_id: str,
@@ -27,22 +71,14 @@ def resolve_sender_phone(
     payload_extra: dict[str, Any] | None,
     settings: Settings,
 ) -> str | None:
-    """Map WAHA sender id to an allowed phone (self-chat uses @lid, not @c.us)."""
-    candidates: list[str] = [phone_from_chat_id(from_id)]
-
-    if from_me and settings.monsoon_allow_self_chat:
-        me = body.get("me")
-        if isinstance(me, dict) and me.get("id"):
-            candidates.append(phone_from_chat_id(str(me["id"])))
-
-        extra = payload_extra or {}
-        data = extra.get("_data") if isinstance(extra.get("_data"), dict) else {}
-        key = data.get("key") if isinstance(data.get("key"), dict) else {}
-        alt = key.get("remoteJidAlt")
-        if alt:
-            candidates.append(phone_from_chat_id(str(alt)))
-
-    for phone in candidates:
+    """Map WAHA sender id to an allowed phone (handles @lid via remoteJidAlt)."""
+    for phone in _phone_candidates_from_payload(
+        from_id=from_id,
+        from_me=from_me,
+        body=body,
+        payload_extra=payload_extra,
+        settings=settings,
+    ):
         if is_allowed_sender(phone, settings):
             return phone
     return None
@@ -76,7 +112,8 @@ def _extract_remote_jid(payload_extra: dict[str, Any] | None) -> str | None:
     extra = payload_extra or {}
     data = extra.get("_data") if isinstance(extra.get("_data"), dict) else {}
     key = data.get("key") if isinstance(data.get("key"), dict) else {}
-    for candidate in (key.get("remoteJidAlt"), key.get("remoteJid")):
+    # Prefer phone JIDs over opaque @lid
+    for candidate in (key.get("remoteJidAlt"), key.get("remoteJid"), extra.get("from")):
         if isinstance(candidate, str) and candidate:
             return _to_cus_jid(candidate)
     return None
@@ -99,6 +136,8 @@ def resolve_conversation_chat_id(
         if to_id:
             return _to_cus_jid(to_id)
         remote = _extract_remote_jid(payload_extra)
+        if remote and not remote.endswith("@lid"):
+            return remote
         if remote:
             return remote
         if me_id:
@@ -115,6 +154,13 @@ def resolve_conversation_chat_id(
     if me_id:
         return _to_cus_jid(me_id)
     return _to_cus_jid(from_id)
+
+
+def is_self_chat(chat_id: str, me_id: str | None) -> bool:
+    """True when the conversation is Message-yourself (chat == me)."""
+    if not me_id:
+        return False
+    return bool(chat_id_aliases(chat_id) & chat_id_aliases(me_id))
 
 
 # Back-compat alias used by older call sites / tests
