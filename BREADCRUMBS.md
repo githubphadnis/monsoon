@@ -1,20 +1,19 @@
 # BREADCRUMBS — monsoon
 
-**Updated:** 2026-07-10 (evening)
+**Updated:** 2026-07-11
 
 ## Done
 
-- Family/peer 1:1: fix inbound `@lid` → phone via `remoteJidAlt`; ignore dad `from_me` in son's chat
-- Docs: `docs/family-chat.md`
-- Earlier: ask path, quieter digests, WorkFlowy notes
+- Digest quality: tasks-first context; reject thank-you / numbered inbox dumps; require task grounding (`405968c`)
+- Family/peer 1:1 LID + from_me_peer (`24dc291`)
+- Ask path + quieter acks (`08a1d43`)
 
 ## Operator
 
-1. Push/redeploy this fix (LID + from_me_peer).
-2. Portainer env must list **both** your and son's phone in NUMBERS **and** CHAT_IDS.
-3. Son sends `help` in your 1:1; watch logs for `Processing capture` vs `chat_not_allowed`.
-4. See `docs/family-chat.md`.
+1. Redeploy `405968c` (digest fix).
+2. WhatsApp `digest` — should name open tasks, or fall back to `*Today — open tasks*` list (never Golf Meadows receipt essays).
+3. Son 1:1 smoke when awake (`docs/family-chat.md`).
 
 ## Branch
 
-- `main` — commit/push when ready
+- `main` pushed
