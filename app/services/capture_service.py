@@ -1,11 +1,13 @@
 """Capture loop — parse WhatsApp text, persist tasks, reply."""
 
+import asyncio
 import logging
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import Settings
@@ -46,6 +48,7 @@ class CaptureService:
         self._waha = WahaClient(settings)
         self._ollama = OllamaClient(settings)
         self._workflowy = WorkFlowyMirrorService(db, settings)
+        self._pending_workflowy_tasks: list[tuple[Task, User]] = []
 
     async def handle_text(
         self,
@@ -79,6 +82,15 @@ class CaptureService:
         phone = sender_phone or resolved_sender.split("@", 1)[0]
         user = get_or_create_user(self._db, phone, self._settings)
 
+        # Claim this message id before heavy work so a twin webhook cannot race.
+        try:
+            self._db.flush()
+        except IntegrityError:
+            self._db.rollback()
+            logger.info("Duplicate webhook ignored (flush race): %s", source_message_id)
+            return None
+
+        parsed: ParsedCapture | None = None
         try:
             parsed = await parse_capture(text, self._settings)
             reply = await self._dispatch(user, parsed, source_message_id)
@@ -91,8 +103,33 @@ class CaptureService:
 
         if reply:
             await self._send_reply(chat_id, reply)
+            logger.info(
+                "Capture reply sent chat_id=%s phone=%s kind=%s",
+                chat_id,
+                phone,
+                parsed.kind if parsed else "error",
+            )
+        await self._flush_pending_workflowy()
         self._db.commit()
         return reply
+
+    async def _flush_pending_workflowy(self) -> None:
+        pending = list(self._pending_workflowy_tasks)
+        self._pending_workflowy_tasks.clear()
+        for task, user in pending:
+            try:
+                await asyncio.wait_for(
+                    self._workflowy.push_task_created(task, user=user),
+                    timeout=12.0,
+                )
+            except TimeoutError:
+                logger.warning(
+                    "WorkFlowy mirror timed out for task #%s", task.display_number
+                )
+            except Exception:
+                logger.exception(
+                    "WorkFlowy mirror failed for task #%s", task.display_number
+                )
 
     async def _dispatch(self, user: User, parsed: ParsedCapture, source_message_id: str) -> str:
         if parsed.kind == "help":
@@ -217,18 +254,16 @@ class CaptureService:
             )
         )
 
-        try:
-            await self._workflowy.push_task_created(task, user=user)
-        except Exception:
-            logger.exception("WorkFlowy mirror failed for task #%s", display_number)
-
         due_part = ""
         if parsed.due_at:
             tz = ZoneInfo(self._settings.app_timezone)
             local = parsed.due_at.astimezone(tz) if parsed.due_at.tzinfo else parsed.due_at
             due_part = f" · {local.strftime('%a %d %b %H:%M')}"
 
-        return f"Saved · #{display_number} {self._short_title(task.title)}{due_part}"
+        reply = f"Saved · #{display_number} {self._short_title(task.title)}{due_part}"
+        # Mirror after WhatsApp ack (see _flush_pending_workflowy) so groups aren't blocked.
+        self._pending_workflowy_tasks.append((task, user))
+        return reply
 
     async def _append_task_note(
         self, user: User, parsed: ParsedCapture, source_message_id: str

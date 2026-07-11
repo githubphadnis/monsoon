@@ -49,7 +49,9 @@ async def waha_webhook(
         event.session,
     )
 
-    if event.event not in {"message", "message.any"}:
+    if event.event != "message.any":
+        # WAHA may also emit plain `message` for the same payload — handling both
+        # races the DB and can hang/duplicate. message.any covers self-chat + groups.
         return {"status": "ignored", "reason": "event"}
 
     if isinstance(event.payload, dict):

@@ -57,7 +57,7 @@ def _build_session_config(settings: Settings, session_data: dict[str, Any]) -> d
     target_url = expected_webhook_url(settings)
     webhook: dict[str, Any] = {
         "url": target_url,
-        "events": ["message", "message.any"],
+        "events": ["message.any"],
     }
     if settings.waha_api_key:
         webhook["customHeaders"] = [{"name": "X-Api-Key", "value": settings.waha_api_key}]
@@ -100,7 +100,7 @@ def get_webhook_status(settings: Settings) -> dict[str, Any]:
     events_ok = any(
         isinstance(hook, dict)
         and hook.get("url") == target_url
-        and {"message", "message.any"}.issubset(set(hook.get("events") or []))
+        and "message.any" in set(hook.get("events") or [])
         for hook in webhooks
     )
     store_ok = (not settings.waha_noweb_store_enabled) or _noweb_store_enabled(session_data)
