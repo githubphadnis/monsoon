@@ -39,7 +39,11 @@ async def test_digest_uses_llm_when_available():
     service = CaptureService(MagicMock(), settings)
 
     with (
-        patch.object(service, "_context_bundle", return_value="## Tasks\n#1 Call bank"),
+        patch.object(
+            service,
+            "_digest_context_bundle",
+            return_value="## Open tasks (PRIMARY)\n#1 Call bank",
+        ),
         patch.object(
             service._ollama,
             "generate_digest",
@@ -59,13 +63,13 @@ async def test_digest_falls_back_to_sql_list():
     user = _user()
 
     with (
-        patch.object(service, "_context_bundle", return_value="ctx"),
+        patch.object(service, "_digest_context_bundle", return_value="ctx"),
         patch.object(service._ollama, "generate_digest", new=AsyncMock(return_value=None)),
-        patch.object(service, "_sql_digest", return_value="*Digest*\n#2 Buy milk [today]"),
+        patch.object(service, "_sql_digest", return_value="*Today — open tasks*\n• Buy milk"),
     ):
         result = await service._digest(user)
 
-    assert "*Digest*" in result
+    assert "open tasks" in result
     assert "Buy milk" in result
 
 

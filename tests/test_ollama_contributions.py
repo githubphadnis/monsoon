@@ -70,7 +70,9 @@ async def test_generate_text_uses_soul_prompt_by_default():
 async def test_generate_digest_includes_soul_and_digest_instruction():
     settings = Settings(monsoon_soul_prompt="Soul prompt for monsoon")
     client = OllamaClient(settings)
-    mock_response = _mock_chat_response("Today: finish report. Next: call bank.")
+    mock_response = _mock_chat_response(
+        "Finish the Griham website by Saturday. Next: call bank."
+    )
     mock_http = _mock_async_client(mock_response)
 
     with patch(
@@ -78,21 +80,21 @@ async def test_generate_digest_includes_soul_and_digest_instruction():
         return_value=mock_http,
     ):
         result = await client.generate_digest(
-            context_text="- Task A\n- Task B",
+            context_text="## Open tasks (PRIMARY)\nFinish Griham website [inbox] ref:T1\nCall bank [today] ref:T2",
             now_iso="2026-07-08T10:00:00+02:00",
         )
 
-    assert result == "Today: finish report. Next: call bank."
+    assert result is not None
+    assert "Griham" in result
     payload = mock_http.post.call_args.kwargs["json"]
     system_content = payload["messages"][0]["content"]
     assert "Soul prompt for monsoon" in system_content
     assert DIGEST_INSTRUCTION in system_content
-    assert "NEVER: thank the user" in system_content
     assert "action digest" in system_content
-    assert "connected paragraphs" in system_content
+    assert payload.get("options", {}).get("temperature") == 0.2
     user_content = payload["messages"][1]["content"]
     assert "2026-07-08T10:00:00+02:00" in user_content
-    assert "Task A" in user_content
+    assert "Open tasks" in user_content
 
 
 @pytest.mark.asyncio
@@ -104,6 +106,13 @@ async def test_generate_digest_rejects_entity_dump():
         "a@b.com c@d.com e@f.com g@h.com h@i.com"
     )
     assert looks_like_bad_digest("Thank you for sharing this information.")
+    assert looks_like_bad_digest(
+        "Thank you for reaching out. I'll respond to your queries in the order "
+        "they were received:\n\n1. *Golf Meadows CHSL Receipts*:\n   - payments\n"
+        "2. *WhatsApp Messages*:\n   - insurance\n"
+        "3. *Life Insurance Update*:\n   - offer\n"
+        "Feel free to let me know if you need help!"
+    )
     assert not looks_like_bad_digest(
         "Finish the Griham website by Saturday. Call Hatim before 10:00 IST."
     )
@@ -111,8 +120,9 @@ async def test_generate_digest_rejects_entity_dump():
     settings = Settings(monsoon_soul_prompt="Soul prompt for monsoon")
     client = OllamaClient(settings)
     dump = (
-        "### Entities Identified:\n*Phone Numbers:*\n- 9930360555\n"
-        "a@b.com c@d.com e@f.com g@h.com h@i.com"
+        "Thank you for reaching out. I'll respond to your queries:\n"
+        "1. *Golf Meadows*:\n foo\n2. *WhatsApp*:\n bar\n3. *Insurance*:\n baz\n"
+        "Feel free to let me know!"
     )
     mock_http = _mock_async_client(_mock_chat_response(dump))
 
@@ -121,7 +131,28 @@ async def test_generate_digest_rejects_entity_dump():
         return_value=mock_http,
     ):
         result = await client.generate_digest(
-            context_text="## Tasks\nCall bank",
+            context_text="## Open tasks (PRIMARY)\nCall bank [inbox] ref:T1",
+            now_iso="2026-07-08T10:00:00+02:00",
+        )
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_generate_digest_rejects_when_tasks_ignored():
+    settings = Settings(monsoon_soul_prompt="Soul prompt for monsoon")
+    client = OllamaClient(settings)
+    # Looks clean but never mentions the open task
+    mock_http = _mock_async_client(
+        _mock_chat_response("Society mail looks quiet today. Next: check the weather.")
+    )
+
+    with patch(
+        "app.integrations.ollama.client.httpx.AsyncClient",
+        return_value=mock_http,
+    ):
+        result = await client.generate_digest(
+            context_text="## Open tasks (PRIMARY)\nFinish Griham website and ppt [inbox] ref:T87",
             now_iso="2026-07-08T10:00:00+02:00",
         )
 

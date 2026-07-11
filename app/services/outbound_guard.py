@@ -23,6 +23,7 @@ _BOT_REPLY_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\*today\*", re.IGNORECASE),
     re.compile(r"^\*tomorrow\*", re.IGNORECASE),
     re.compile(r"^\*Digest\*", re.IGNORECASE),
+    re.compile(r"^\*Today — open tasks\*", re.IGNORECASE),
     re.compile(r"^Nothing open right now\.", re.IGNORECASE),
     re.compile(r"^I didn't catch that\.", re.IGNORECASE),
     re.compile(r"^Couldn't reach the assistant", re.IGNORECASE),

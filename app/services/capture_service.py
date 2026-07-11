@@ -147,6 +147,38 @@ class CaptureService:
         # Intentionally omit ## Entities — models regurgitate phone/email lists.
         return "\n\n".join(parts) if parts else "No indexed context yet."
 
+    def _digest_context_bundle(self, user: User) -> str:
+        """Tight digest context: tasks first; email/WA capped as optional signals."""
+        slice_ = build_context_slice(
+            self._db,
+            self._settings,
+            ContextSliceRequest(user_id=user.id, topic=None, max_chars=5000),
+        )
+        parts: list[str] = []
+        if slice_.tasks_text:
+            parts.append(
+                "## Open tasks (PRIMARY — build the digest from these)\n"
+                + slice_.tasks_text
+            )
+        if slice_.task_context_text:
+            note_lines = slice_.task_context_text.splitlines()[:12]
+            parts.append("## Notes on those tasks\n" + "\n".join(note_lines))
+
+        signal_blocks: list[str] = []
+        if slice_.emails_text:
+            signal_blocks.append("Email:\n" + "\n".join(slice_.emails_text.splitlines()[:4]))
+        if slice_.wa_messages_text:
+            signal_blocks.append(
+                "WhatsApp:\n" + "\n".join(slice_.wa_messages_text.splitlines()[:4])
+            )
+        if signal_blocks:
+            parts.append(
+                "## Optional signals (cite at most ONE only if it creates a today action; "
+                "do NOT summarize this section item-by-item)\n"
+                + "\n\n".join(signal_blocks)
+            )
+        return "\n\n".join(parts) if parts else "No open tasks yet."
+
     def _next_display_number(self, user_id) -> int:
         current = self._db.scalar(
             select(func.max(Task.display_number)).where(Task.user_id == user_id)
@@ -300,16 +332,17 @@ class CaptureService:
         visible = [t for t in open_tasks if not _URL_ONLY_RE.match((t.title or "").strip())]
         if not visible:
             return "Nothing open right now. Inbox zero?"
-        lines = ["*Digest*"]
+        lines = ["*Today — open tasks*"]
         for task in reversed(visible[:10]):
             due = ""
             if task.due_at:
                 due = f" — {task.due_at.astimezone(tz).strftime('%d %b %H:%M')}"
-            lines.append(f"{task.title} [{task.status}]{due}")
+            lines.append(f"• {task.title}{due}")
+        lines.append("Next: pick the top one and finish it.")
         return "\n".join(lines)
 
     async def _digest(self, user: User) -> str:
-        context_text = self._context_bundle(user)
+        context_text = self._digest_context_bundle(user)
         llm_text = await self._ollama.generate_digest(
             context_text=context_text,
             now_iso=self._now_iso(),

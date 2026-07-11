@@ -24,6 +24,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - Digest/reflect prompts: connected prose (not staccato bullets); ban entity inventories and category fluff.
+- Digest context is **tasks-first** with capped email/WA signals; reject support-desk / inbox-topic dumps and replies that ignore open tasks.
 - LLM context for digest/reflect/ask **omits `## Entities`**; WA slice skips `from_me` and bot-reply noise.
 - Quiet WhatsApp acks (`Saved · #N …` / `Done · #N`); `list` hides URL-only titles.
 - WorkFlowy: system metadata goes in the node **note** field (no `id:`/`source:`/`due:`/`status:` children).
