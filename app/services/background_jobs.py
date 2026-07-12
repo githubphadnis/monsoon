@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.config import Settings
 from app.db import SessionLocal
 from app.models import SyncState, User
+from app.services.ephemeral_cleanup import EphemeralCleanupService
 from app.services.gmail_sync import GmailSyncService
 from app.services.reminder_service import ReminderService
 from app.services.wa_backfill import WaBackfillService
@@ -23,6 +24,7 @@ GMAIL_STATUS_KEY = "scheduler:gmail"
 WA_STATUS_KEY = "scheduler:wa"
 WORKFLOWY_STATUS_KEY = "scheduler:workflowy"
 REMINDER_STATUS_KEY = "scheduler:reminders"
+EPHEMERAL_STATUS_KEY = "scheduler:ephemeral"
 
 
 def _set_status(key: str, **fields: object) -> None:
@@ -44,6 +46,7 @@ def scheduler_status() -> dict[str, object]:
             WA_STATUS_KEY,
             WORKFLOWY_STATUS_KEY,
             REMINDER_STATUS_KEY,
+            EPHEMERAL_STATUS_KEY,
         ):
             row = db.get(SyncState, key)
             result[key.split(":")[1]] = row.value if row and row.value else None
@@ -162,6 +165,36 @@ async def _run_reminders(settings: Settings) -> None:
         _set_status(REMINDER_STATUS_KEY, status="error", error=str(exc))
 
 
+async def _run_ephemeral(settings: Settings) -> None:
+    if settings.monsoon_ephemeral_seconds <= 0:
+        _set_status(EPHEMERAL_STATUS_KEY, status="skipped", reason="disabled")
+        return
+    _set_status(EPHEMERAL_STATUS_KEY, status="running")
+    try:
+        with SessionLocal() as db:
+            stats = await EphemeralCleanupService(db, settings).run()
+        _set_status(
+            EPHEMERAL_STATUS_KEY,
+            status="ok",
+            outbound_deleted=stats.outbound_deleted,
+            outbound_failed=stats.outbound_failed,
+            inbound_deleted=stats.inbound_deleted,
+            inbound_failed=stats.inbound_failed,
+            errors=list(stats.errors)[:5],
+        )
+        if stats.outbound_deleted or stats.inbound_deleted or stats.outbound_failed:
+            logger.info(
+                "Ephemeral: out_del=%s out_fail=%s in_del=%s in_fail=%s",
+                stats.outbound_deleted,
+                stats.outbound_failed,
+                stats.inbound_deleted,
+                stats.inbound_failed,
+            )
+    except Exception as exc:
+        logger.exception("Background ephemeral cleanup failed")
+        _set_status(EPHEMERAL_STATUS_KEY, status="error", error=str(exc))
+
+
 async def _loop(name: str, interval_minutes: int, runner) -> None:
     # Allow sub-minute for reminders (interval expressed in minutes, fractional OK later)
     seconds = max(30, int(interval_minutes * 60))
@@ -175,20 +208,31 @@ async def _loop(name: str, interval_minutes: int, runner) -> None:
         await asyncio.sleep(seconds)
 
 
+async def _loop_seconds(name: str, interval_seconds: int, runner) -> None:
+    seconds = max(15, int(interval_seconds))
+    while True:
+        try:
+            await runner()
+        except Exception:
+            logger.exception("Background loop %s crashed; will retry", name)
+        await asyncio.sleep(seconds)
+
+
 def start_background_jobs(settings: Settings) -> list[asyncio.Task]:
     if not settings.monsoon_scheduler_enabled:
         logger.info("Background scheduler disabled by config")
         return []
 
     logger.info(
-        "Starting background jobs: gmail=%sm/%spages wa=%sm/%schats reminders=%sm",
+        "Starting background jobs: gmail=%sm/%spages wa=%sm/%schats reminders=%sm ephemeral=%ss",
         settings.monsoon_gmail_sync_interval_minutes,
         settings.monsoon_gmail_sync_batch_pages,
         settings.monsoon_wa_sync_interval_minutes,
         settings.monsoon_wa_sync_batch_chats,
         settings.monsoon_reminder_interval_minutes,
+        settings.monsoon_ephemeral_seconds,
     )
-    return [
+    tasks = [
         asyncio.create_task(
             _loop("gmail", settings.monsoon_gmail_sync_interval_minutes, lambda: _run_gmail_batch(settings))
         ),
@@ -210,6 +254,17 @@ def start_background_jobs(settings: Settings) -> list[asyncio.Task]:
             )
         ),
     ]
+    if settings.monsoon_ephemeral_seconds > 0:
+        tasks.append(
+            asyncio.create_task(
+                _loop_seconds(
+                    "ephemeral",
+                    settings.monsoon_ephemeral_interval_seconds,
+                    lambda: _run_ephemeral(settings),
+                )
+            )
+        )
+    return tasks
 
 
 async def stop_background_jobs(tasks: list[asyncio.Task]) -> None:

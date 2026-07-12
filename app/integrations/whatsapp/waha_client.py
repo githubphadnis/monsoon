@@ -49,6 +49,26 @@ class WahaClient:
             logger.info("Sent WhatsApp message to %s via session %s", chat_id, self._settings.waha_session)
             return data
 
+    async def delete_message(self, chat_id: str, message_id: str) -> None:
+        """Delete/revoke a message via WAHA (sent messages = delete for everyone)."""
+        chat_enc = quote(chat_id, safe="")
+        msg_enc = quote(message_id, safe="")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.delete(
+                f"{self._session_base()}/chats/{chat_enc}/messages/{msg_enc}",
+                headers=self._headers(),
+            )
+            if response.is_error:
+                logger.error(
+                    "WAHA deleteMessage failed status=%s chatId=%s messageId=%s body=%s",
+                    response.status_code,
+                    chat_id,
+                    message_id,
+                    response.text[:500],
+                )
+            response.raise_for_status()
+            logger.info("Deleted WhatsApp message %s in %s", message_id, chat_id)
+
     async def ping(self) -> bool:
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:

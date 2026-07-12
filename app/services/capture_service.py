@@ -17,6 +17,7 @@ from app.models import InboundMessage, OutboundMessage, Task, TaskEvent, User
 from app.schemas.capture import ParsedCapture
 from app.schemas.context import ContextSliceRequest
 from app.services.context_slice import build_context_slice
+from app.services.ephemeral_cleanup import extract_waha_message_id
 from app.services.parser import parse_capture
 from app.services.users import get_or_create_user
 from app.services.workflowy_mirror import WorkFlowyMirrorService
@@ -36,6 +37,7 @@ reflect <topic>           what's active on a topic
 ask anything              free-text questions (uses your context)
 help / ?                  this message
 
+Replies auto-clear after a few minutes so the chat stays light.
 Commands create tasks; other messages get an assistant reply."""
 
 _URL_ONLY_RE = re.compile(r"^https?://\S+$", re.IGNORECASE)
@@ -532,7 +534,7 @@ class CaptureService:
             result = await self._waha.send_text(chat_id, text)
             outbound.status = "sent"
             outbound.sent_at = datetime.now(ZoneInfo("UTC"))
-            outbound.provider_message_id = str(result.get("id", "") or "") or None
+            outbound.provider_message_id = extract_waha_message_id(result)
             self._db.commit()
         except Exception as exc:
             outbound.status = "error"

@@ -4,22 +4,17 @@
 
 ## Done
 
-- Personal digests isolated; `MONSOON_SHARED_CHAT_IDS` for family pooled space
-- Ollama Auto routing: `OLLAMA_MODEL_PARSE` / `OLLAMA_MODEL_CHAT` (+ chat timeout)
+- Ephemeral WA cleanup (auto-delete replies + commands after TTL)
+- Personal digests isolated; shared family chats; Ollama Auto routing
+- Docs: per-person private channels (1:1 with monsoon number)
 
 ## Operator
 
-1. Pull/redeploy latest `main`.
-2. On lenai: `ollama pull qwen2.5:14b` (or 8B if VRAM tight).
-3. Portainer example:
-   ```
-   OLLAMA_MODEL=qwen2.5:14b
-   OLLAMA_MODEL_PARSE=qwen2.5-coder:7b
-   OLLAMA_MODEL_CHAT=qwen2.5:14b
-   OLLAMA_CHAT_TIMEOUT_SECONDS=180
-   MONSOON_SHARED_CHAT_IDS=120363143633935585@g.us
-   ```
-4. Smoke: son `digest` in Todo = his tasks only; family `list` = pooled; ask feels richer.
+1. Redeploy `main`.
+2. Wife/son: each opens **1:1 with monsoon number** (not Message yourself on their phone).
+3. Allowlist their `<digits>@c.us` in `ALLOWED_WHATSAPP_CHAT_IDS` + numbers.
+4. Ephemeral defaults on (5 min). Override: `MONSOON_EPHEMERAL_SECONDS=300` or `0` to disable.
+5. Optional: `OLLAMA_MODEL_CHAT=qwen2.5:14b` + pull on lenai.
 
 ## Branch
 

@@ -68,3 +68,9 @@ OLLAMA_TIMEOUT_SECONDS=60
 # Longer wait for big chat models (0 = same as OLLAMA_TIMEOUT_SECONDS)
 # OLLAMA_CHAT_TIMEOUT_SECONDS=180
 MONSOON_SOUL_PROMPT=You are monsoon, Prakalp's personal capture assistant on WhatsApp. Be concrete, action-first, and brief. No corporate filler, no thank-yous.
+
+# Auto-delete monsoon WhatsApp replies (and best-effort commands) after N seconds
+MONSOON_EPHEMERAL_SECONDS=300
+MONSOON_EPHEMERAL_DELETE_COMMANDS=true
+# MONSOON_EPHEMERAL_SECONDS=0
+

@@ -116,6 +116,7 @@ def health_scheduler() -> dict[str, object]:
         "wa_batch_chats": settings.monsoon_wa_sync_batch_chats,
         "workflowy_interval_minutes": settings.monsoon_workflowy_sync_interval_minutes,
         "reminder_interval_minutes": settings.monsoon_reminder_interval_minutes,
+        "ephemeral_seconds": settings.monsoon_ephemeral_seconds,
         **scheduler_status(),
     }
 
@@ -141,6 +142,8 @@ async def health_ready() -> dict[str, object]:
         "allowed_whatsapp_chat_ids": sorted(settings.allowed_chat_ids_set),
         "shared_whatsapp_chat_ids": sorted(settings.shared_chat_ids_set),
         "chat_allowlist_active": bool(settings.allowed_chat_ids_set),
+        "ephemeral_seconds": settings.monsoon_ephemeral_seconds,
+        "ephemeral_delete_commands": settings.monsoon_ephemeral_delete_commands,
     }
 
 

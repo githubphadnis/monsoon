@@ -73,6 +73,11 @@ class Settings(BaseSettings):
     monsoon_wa_sync_batch_chats: int = 5
     monsoon_workflowy_sync_interval_minutes: int = 20
     monsoon_reminder_interval_minutes: int = 1
+    # Auto-delete monsoon WhatsApp replies after N seconds (0 = off). Also deletes
+    # processed command messages when monsoon_ephemeral_delete_commands is true.
+    monsoon_ephemeral_seconds: int = 300
+    monsoon_ephemeral_delete_commands: bool = True
+    monsoon_ephemeral_interval_seconds: int = 30
     gmail_include_spam_trash: bool = False  # set true to also index Spam/Trash
 
     @field_validator("gmail_sync_max_pages", mode="before")

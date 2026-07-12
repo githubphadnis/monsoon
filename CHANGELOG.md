@@ -9,6 +9,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Ephemeral WhatsApp cleanup:** auto-delete monsoon replies (and best-effort
+  commands) after `MONSOON_EPHEMERAL_SECONDS` (default 300). See `docs/family-chat.md`.
 - **Ollama Auto routing:** optional `OLLAMA_MODEL_PARSE` (fast JSON) + `OLLAMA_MODEL_CHAT`
   (digest/reflect/ask). See `docs/ollama-models.md`. `OLLAMA_CHAT_TIMEOUT_SECONDS` for bigger models.
 - Conversational **`ask`** path: free-text / questions use Ollama + context slice instead of "I didn't catch that" or junk todos.
