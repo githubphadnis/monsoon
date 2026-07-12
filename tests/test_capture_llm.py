@@ -11,6 +11,8 @@ from app.schemas.capture import ParsedCapture
 from app.services.capture_service import CaptureService
 from app.services.parser import parse_with_regex
 
+CHAT = "918291882204@c.us"
+
 
 def test_reflect_parses_topic():
     settings = Settings()
@@ -27,6 +29,14 @@ def test_note_on_task_parses():
     assert parsed.kind == "task_note"
     assert parsed.task_number == 18
     assert parsed.title == "waiting for callback"
+
+
+def test_todo_with_colon_parses():
+    settings = Settings()
+    parsed = parse_with_regex("Todo: Make a list of all the books to read", settings)
+    assert parsed is not None
+    assert parsed.kind == "todo"
+    assert "books" in (parsed.title or "").lower()
 
 
 def _user() -> User:
@@ -50,7 +60,7 @@ async def test_digest_uses_llm_when_available():
             new=AsyncMock(return_value="Today: call bank. Next: send docs."),
         ),
     ):
-        result = await service._digest(_user())
+        result = await service._digest(_user(), chat_id=CHAT)
 
     assert result == "Today: call bank. Next: send docs."
 
@@ -67,7 +77,7 @@ async def test_digest_falls_back_to_sql_list():
         patch.object(service._ollama, "generate_digest", new=AsyncMock(return_value=None)),
         patch.object(service, "_sql_digest", return_value="*Today — open tasks*\n• Buy milk"),
     ):
-        result = await service._digest(user)
+        result = await service._digest(user, chat_id=CHAT)
 
     assert "open tasks" in result
     assert "Buy milk" in result
@@ -86,7 +96,7 @@ async def test_reflect_dispatches_to_ollama():
             new=AsyncMock(return_value="Active: griham deploy. Next: redeploy."),
         ),
     ):
-        result = await service._reflect(_user(), "griham")
+        result = await service._reflect(_user(), "griham", chat_id=CHAT)
 
     assert "griham deploy" in result
 
@@ -103,9 +113,9 @@ async def test_dispatch_reflect_kind():
         "_reflect",
         new=AsyncMock(return_value="Reflection text"),
     ) as mock_reflect:
-        reply = await service._dispatch(user, parsed, "msg-1")
+        reply = await service._dispatch(user, parsed, "msg-1", chat_id=CHAT)
 
-    mock_reflect.assert_awaited_once_with(user, "health")
+    mock_reflect.assert_awaited_once_with(user, "health", chat_id=CHAT)
     assert reply == "Reflection text"
 
 
@@ -122,7 +132,7 @@ async def test_ask_uses_ollama_with_context():
             new=AsyncMock(return_value="Hatim is due a call before 10:00 IST."),
         ),
     ):
-        result = await service._ask(_user(), "what about hatim?")
+        result = await service._ask(_user(), "what about hatim?", chat_id=CHAT)
 
     assert "Hatim" in result
 
@@ -139,23 +149,23 @@ async def test_dispatch_ask_kind():
         "_ask",
         new=AsyncMock(return_value="Assistant answer"),
     ) as mock_ask:
-        reply = await service._dispatch(user, parsed, "msg-ask")
+        reply = await service._dispatch(user, parsed, "msg-ask", chat_id=CHAT)
 
-    mock_ask.assert_awaited_once_with(user, "elaborate on berberich")
+    mock_ask.assert_awaited_once_with(user, "elaborate on berberich", chat_id=CHAT)
     assert reply == "Assistant answer"
 
 
-def test_context_bundle_omits_entities():
+def test_personal_digest_bundle_excludes_email_wa():
     settings = Settings()
     service = CaptureService(MagicMock(), settings)
     from app.schemas.context import ContextSlice
 
     fake = ContextSlice(
-        tasks_text="Call bank [inbox] ref:T1",
+        tasks_text="make a list of books [inbox] ref:T1",
         task_context_text="",
-        emails_text="",
-        wa_messages_text="",
-        entities_text="phone:9930360555\nemail:a@b.com",
+        emails_text="CAM invoice July",
+        wa_messages_text="Finish Griham website",
+        entities_text="phone:9930360555",
         topic=None,
         char_count=40,
     )
@@ -163,10 +173,11 @@ def test_context_bundle_omits_entities():
         "app.services.capture_service.build_context_slice",
         return_value=fake,
     ):
-        bundle = service._context_bundle(_user())
+        bundle = service._digest_context_bundle(_user(), chat_id=CHAT)
 
-    assert "## Tasks" in bundle
-    assert "## Entities" not in bundle
+    assert "books" in bundle
+    assert "Griham" not in bundle
+    assert "CAM invoice" not in bundle
     assert "9930360555" not in bundle
 
 
@@ -192,7 +203,7 @@ def test_list_skips_url_only_titles():
     )
     db.scalars.return_value = [url_task, real_task]
 
-    result = service._list_tasks(user, "today")
+    result = service._list_tasks(user, "today", chat_id=CHAT)
     assert "#90 buy pc for P3" in result
     assert "msn.com" not in result
     assert "#86" not in result
@@ -205,4 +216,3 @@ def test_question_parses_as_ask():
     assert looks_like_question("ok what about now?")
     assert not looks_like_question("todo buy milk")
     assert parse_with_regex("todo buy milk", Settings()) is not None
-

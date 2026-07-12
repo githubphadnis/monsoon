@@ -17,8 +17,8 @@ from app.schemas.capture import ParsedCapture
 # help:     help | ? | commands
 # remind:   remind [me] [to] … | remember to …
 
-TODO_RE = re.compile(r"^to[\s-]*do\s+(.+)$", re.IGNORECASE)
-NOTE_RE = re.compile(r"^note\s+(.+)$", re.IGNORECASE)
+TODO_RE = re.compile(r"^to[\s-]*do(?:\s*:|\s+)\s*(.+)$", re.IGNORECASE)
+NOTE_RE = re.compile(r"^note(?:\s*:|\s+)\s*(.+)$", re.IGNORECASE)
 REMIND_RE = re.compile(
     r"^remind(?:\s+me)?(?:\s+to)?\s+(.+)$|^remember(?:\s+to)?\s+(.+)$",
     re.IGNORECASE,

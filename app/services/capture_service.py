@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -93,7 +93,7 @@ class CaptureService:
         parsed: ParsedCapture | None = None
         try:
             parsed = await parse_capture(text, self._settings)
-            reply = await self._dispatch(user, parsed, source_message_id)
+            reply = await self._dispatch(user, parsed, source_message_id, chat_id=chat_id)
             inbound.status = "processed"
         except Exception as exc:
             inbound.status = "error"
@@ -131,21 +131,30 @@ class CaptureService:
                     "WorkFlowy mirror failed for task #%s", task.display_number
                 )
 
-    async def _dispatch(self, user: User, parsed: ParsedCapture, source_message_id: str) -> str:
+    async def _dispatch(
+        self,
+        user: User,
+        parsed: ParsedCapture,
+        source_message_id: str,
+        *,
+        chat_id: str,
+    ) -> str:
         if parsed.kind == "help":
             return HELP_TEXT
 
         if parsed.kind == "digest":
-            return await self._digest(user)
+            return await self._digest(user, chat_id=chat_id)
 
         if parsed.kind == "reflect":
-            return await self._reflect(user, parsed.reflect_topic)
+            return await self._reflect(user, parsed.reflect_topic, chat_id=chat_id)
 
         if parsed.kind == "ask":
-            return await self._ask(user, parsed.title or parsed.raw_command or "")
+            return await self._ask(
+                user, parsed.title or parsed.raw_command or "", chat_id=chat_id
+            )
 
         if parsed.kind == "list":
-            return self._list_tasks(user, parsed.status or "today")
+            return self._list_tasks(user, parsed.status or "today", chat_id=chat_id)
 
         if parsed.kind == "done":
             return await self._complete_task(user, parsed.task_number)
@@ -159,61 +168,148 @@ class CaptureService:
         if parsed.title and parsed.kind != "unknown":
             return await self._create_task(user, parsed, source_message_id)
 
-        return await self._ask(user, parsed.raw_command or parsed.title or "")
+        return await self._ask(
+            user, parsed.raw_command or parsed.title or "", chat_id=chat_id
+        )
 
     def _now_iso(self) -> str:
         tz = ZoneInfo(self._settings.app_timezone)
         return datetime.now(tz).isoformat()
 
-    def _context_bundle(self, user: User, topic: str | None = None) -> str:
-        """Build LLM context — tasks/email/WA only (no entity dumps)."""
+    def _is_shared(self, chat_id: str) -> bool:
+        from app.services.sender_identity import is_shared_chat
+
+        return is_shared_chat(chat_id, self._settings)
+
+    def _family_users(self) -> list[User]:
+        phones = self._settings.allowed_numbers_set
+        if not phones:
+            return []
+        return list(
+            self._db.scalars(select(User).where(User.phone_number.in_(phones)))
+        )
+
+    def _owner_label(self, owner: User) -> str:
+        phone = owner.phone_number or "?"
+        return phone[-4:] if len(phone) >= 4 else phone
+
+    def _wa_lines_for_chat(self, chat_id: str, *, limit: int = 30) -> list[str]:
+        """Recent indexed WA lines from one conversation (group or 1:1)."""
+        from app.models import WaChat, WaMessage
+        from app.services.outbound_guard import is_bot_reply_text
+        from app.services.sender_identity import chat_id_aliases
+
+        aliases = chat_id_aliases(chat_id)
+        session = self._settings.waha_session
+        rows = self._db.execute(
+            select(WaMessage, WaChat.name)
+            .join(WaChat, WaMessage.chat_uuid == WaChat.id)
+            .where(
+                WaMessage.session == session,
+                WaMessage.chat_id.in_(aliases),
+                or_(WaMessage.from_me.is_(False), WaMessage.from_me.is_(None)),
+            )
+            .order_by(WaMessage.message_ts.desc().nullslast(), WaMessage.indexed_at.desc())
+            .limit(limit * 2)
+        ).all()
+        lines: list[str] = []
+        for msg, chat_name in rows:
+            body = (msg.body or "").strip()
+            if not body or is_bot_reply_text(body):
+                continue
+            who = msg.from_id or "?"
+            ts = (
+                msg.message_ts.strftime("%Y-%m-%d %H:%M")
+                if msg.message_ts
+                else ""
+            )
+            label = chat_name or chat_id
+            lines.append(f"[{label}] {who} {ts} {body}".strip())
+            if len(lines) >= limit:
+                break
+        return lines
+
+    def _tasks_for_scope(self, user: User, chat_id: str) -> list[tuple[User, Task]]:
+        """Personal: only this user. Shared chat: all allowlisted family users."""
+        if self._is_shared(chat_id):
+            owners = self._family_users() or [user]
+        else:
+            owners = [user]
+        owner_by_id = {o.id: o for o in owners}
+        tasks = list(
+            self._db.scalars(
+                select(Task)
+                .where(Task.user_id.in_(owner_by_id.keys()), Task.status != "done")
+                .order_by(Task.display_number.desc())
+                .limit(40)
+            )
+        )
+        return [(owner_by_id[t.user_id], t) for t in tasks if t.user_id in owner_by_id]
+
+    def _context_bundle(
+        self, user: User, topic: str | None = None, *, chat_id: str | None = None
+    ) -> str:
+        """LLM context scoped to the conversation.
+
+        Personal chats: this user's tasks/notes only (no global email/WA leak).
+        Shared family chats: all members' tasks + WA lines from that group.
+        """
+        chat = chat_id or ""
+        if self._is_shared(chat):
+            parts: list[str] = []
+            scoped = self._tasks_for_scope(user, chat)
+            if scoped:
+                tz = ZoneInfo(self._settings.app_timezone)
+                lines = []
+                for owner, task in scoped[:25]:
+                    due = ""
+                    if task.due_at:
+                        due = f" due:{task.due_at.astimezone(tz).strftime('%Y-%m-%d %H:%M')}"
+                    lines.append(
+                        f"{self._owner_label(owner)}: {task.title} [{task.status}]{due}"
+                    )
+                parts.append("## Family tasks\n" + "\n".join(lines))
+            wa_lines = self._wa_lines_for_chat(chat, limit=25)
+            if topic:
+                t = topic.lower()
+                wa_lines = [ln for ln in wa_lines if t in ln.lower()][:20]
+            if wa_lines:
+                parts.append("## This group (WhatsApp)\n" + "\n".join(wa_lines))
+            return "\n\n".join(parts) if parts else "No shared context in this group yet."
+
+        # Personal — tasks only (prevents dad's atlas leaking into son's digest/ask)
         slice_ = build_context_slice(
             self._db,
             self._settings,
-            ContextSliceRequest(user_id=user.id, topic=topic),
+            ContextSliceRequest(user_id=user.id, topic=topic, max_chars=6000),
         )
-        parts: list[str] = []
+        parts = []
         if slice_.tasks_text:
             parts.append(f"## Tasks\n{slice_.tasks_text}")
         if slice_.task_context_text:
             parts.append(f"## Task Context\n{slice_.task_context_text}")
-        if slice_.emails_text:
-            parts.append(f"## Email\n{slice_.emails_text}")
-        if slice_.wa_messages_text:
-            parts.append(f"## WhatsApp\n{slice_.wa_messages_text}")
-        # Intentionally omit ## Entities — models regurgitate phone/email lists.
-        return "\n\n".join(parts) if parts else "No indexed context yet."
+        return "\n\n".join(parts) if parts else "No open tasks yet."
 
-    def _digest_context_bundle(self, user: User) -> str:
-        """Tight digest context: tasks first; email/WA capped as optional signals."""
+    def _digest_context_bundle(self, user: User, *, chat_id: str) -> str:
+        """Digest input: personal = own tasks only; shared = family tasks (+ group WA)."""
+        if self._is_shared(chat_id):
+            return self._context_bundle(user, chat_id=chat_id)
+
         slice_ = build_context_slice(
             self._db,
             self._settings,
-            ContextSliceRequest(user_id=user.id, topic=None, max_chars=5000),
+            ContextSliceRequest(user_id=user.id, topic=None, max_chars=4000),
         )
         parts: list[str] = []
         if slice_.tasks_text:
             parts.append(
-                "## Open tasks (PRIMARY — build the digest from these)\n"
+                "## Open tasks (PRIMARY — build the digest from these only)\n"
                 + slice_.tasks_text
             )
         if slice_.task_context_text:
             note_lines = slice_.task_context_text.splitlines()[:12]
             parts.append("## Notes on those tasks\n" + "\n".join(note_lines))
-
-        signal_blocks: list[str] = []
-        if slice_.emails_text:
-            signal_blocks.append("Email:\n" + "\n".join(slice_.emails_text.splitlines()[:4]))
-        if slice_.wa_messages_text:
-            signal_blocks.append(
-                "WhatsApp:\n" + "\n".join(slice_.wa_messages_text.splitlines()[:4])
-            )
-        if signal_blocks:
-            parts.append(
-                "## Optional signals (cite at most ONE only if it creates a today action; "
-                "do NOT summarize this section item-by-item)\n"
-                + "\n\n".join(signal_blocks)
-            )
+        # No global Email/WhatsApp — that leaked other people's atlas into digests.
         return "\n\n".join(parts) if parts else "No open tasks yet."
 
     def _next_display_number(self, user_id) -> int:
@@ -317,24 +413,24 @@ class CaptureService:
 
         return f"Done · #{task_number} {self._short_title(task.title)}"
 
-    def _list_tasks(self, user: User, bucket: str) -> str:
+    def _list_tasks(self, user: User, bucket: str, *, chat_id: str) -> str:
         tz = ZoneInfo(self._settings.app_timezone)
         today = datetime.now(tz).date()
-        query = select(Task).where(Task.user_id == user.id, Task.status != "done")
-        tasks = list(self._db.scalars(query.order_by(Task.display_number.desc()).limit(40)))
+        scoped = self._tasks_for_scope(user, chat_id)
+        tasks = [(o, t) for o, t in scoped]
 
         if bucket == "today":
             tasks = [
-                t
-                for t in tasks
+                (o, t)
+                for o, t in tasks
                 if t.status in {"inbox", "today", "scheduled"}
                 and (t.due_at is None or t.due_at.astimezone(tz).date() <= today)
             ]
         elif bucket == "tomorrow":
             tomorrow = today.fromordinal(today.toordinal() + 1)
             tasks = [
-                t
-                for t in tasks
+                (o, t)
+                for o, t in tasks
                 if t.status != "done"
                 and (
                     (t.due_at is not None and t.due_at.astimezone(tz).date() <= tomorrow)
@@ -342,54 +438,58 @@ class CaptureService:
                 )
             ]
 
-        visible = [t for t in tasks if not _URL_ONLY_RE.match((t.title or "").strip())]
+        visible = [
+            (o, t) for o, t in tasks if not _URL_ONLY_RE.match((t.title or "").strip())
+        ]
         if not visible:
             return f"No tasks for `{bucket}`."
 
-        lines = [f"*{bucket}* ({len(visible)})"]
-        for task in reversed(visible[:12]):
+        shared = self._is_shared(chat_id)
+        header = f"*family {bucket}*" if shared else f"*{bucket}*"
+        lines = [f"{header} ({len(visible)})"]
+        for owner, task in reversed(visible[:12]):
             due = ""
             if task.due_at:
                 due = f" — {task.due_at.astimezone(tz).strftime('%d %b %H:%M')}"
-            lines.append(f"#{task.display_number} {task.title}{due}")
+            prefix = f"{self._owner_label(owner)} " if shared else ""
+            lines.append(f"{prefix}#{task.display_number} {task.title}{due}")
         return "\n".join(lines)
 
-    def _sql_digest(self, user: User) -> str:
+    def _sql_digest(self, user: User, *, chat_id: str) -> str:
         tz = ZoneInfo(self._settings.app_timezone)
-        open_tasks = list(
-            self._db.scalars(
-                select(Task)
-                .where(Task.user_id == user.id, Task.status != "done")
-                .order_by(Task.display_number.desc())
-                .limit(15)
-            )
-        )
-        visible = [t for t in open_tasks if not _URL_ONLY_RE.match((t.title or "").strip())]
+        scoped = self._tasks_for_scope(user, chat_id)
+        visible = [
+            (o, t) for o, t in scoped if not _URL_ONLY_RE.match((t.title or "").strip())
+        ][:10]
         if not visible:
             return "Nothing open right now. Inbox zero?"
-        lines = ["*Today — open tasks*"]
-        for task in reversed(visible[:10]):
+        shared = self._is_shared(chat_id)
+        lines = ["*Family — open tasks*" if shared else "*Today — open tasks*"]
+        for owner, task in reversed(visible):
             due = ""
             if task.due_at:
                 due = f" — {task.due_at.astimezone(tz).strftime('%d %b %H:%M')}"
-            lines.append(f"• {task.title}{due}")
+            who = f"{self._owner_label(owner)}: " if shared else ""
+            lines.append(f"• {who}{task.title}{due}")
         lines.append("Next: pick the top one and finish it.")
         return "\n".join(lines)
 
-    async def _digest(self, user: User) -> str:
-        context_text = self._digest_context_bundle(user)
+    async def _digest(self, user: User, *, chat_id: str) -> str:
+        context_text = self._digest_context_bundle(user, chat_id=chat_id)
         llm_text = await self._ollama.generate_digest(
             context_text=context_text,
             now_iso=self._now_iso(),
         )
         if llm_text:
             return llm_text.strip()
-        return self._sql_digest(user)
+        return self._sql_digest(user, chat_id=chat_id)
 
-    async def _reflect(self, user: User, topic: str | None) -> str:
+    async def _reflect(
+        self, user: User, topic: str | None, *, chat_id: str
+    ) -> str:
         if not topic:
             return "Usage: `reflect <topic>`"
-        context_text = self._context_bundle(user, topic=topic)
+        context_text = self._context_bundle(user, topic=topic, chat_id=chat_id)
         llm_text = await self._ollama.generate_reflect(
             topic=topic,
             context_text=context_text,
@@ -402,11 +502,11 @@ class CaptureService:
             "Try again shortly, or send `digest`."
         )
 
-    async def _ask(self, user: User, question: str) -> str:
+    async def _ask(self, user: User, question: str, *, chat_id: str) -> str:
         q = (question or "").strip()
         if not q:
             return "Ask me anything about your tasks or context — or send `help`."
-        context_text = self._context_bundle(user)
+        context_text = self._context_bundle(user, chat_id=chat_id)
         llm_text = await self._ollama.generate_ask(
             question=q,
             context_text=context_text,

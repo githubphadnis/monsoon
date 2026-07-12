@@ -9,6 +9,8 @@ ALLOWED_WHATSAPP_NUMBERS=918291882204
 # Self-chat: your number + @c.us  (Message yourself)
 # Group: 120363xxxxxxxxx@g.us
 ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us
+# Shared family space — all allowlisted members see pooled tasks + this group's WA
+# MONSOON_SHARED_CHAT_IDS=120363143633935585@g.us
 MONSOON_ALLOW_SELF_CHAT=true
 MONSOON_AUTO_WEBHOOK=true
 

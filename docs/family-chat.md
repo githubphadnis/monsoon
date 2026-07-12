@@ -1,88 +1,50 @@
-# Family / group chat — monsoon with your son
+# Family / group chat — monsoon spaces
 
-monsoon does **not** open a separate WhatsApp account. WAHA is paired to **your**
-number. Messages in allowed chats hit the webhook; monsoon filters by allowlist.
+## Two kinds of chat
 
-## Two different allowlists
+| Chat type | Env | What each person sees |
+|-----------|-----|------------------------|
+| **Personal** (Message yourself, Todo chore group, 1:1) | in `ALLOWED_WHATSAPP_CHAT_IDS` only | **Own** tasks / digest / ask |
+| **Shared family** | also in `MONSOON_SHARED_CHAT_IDS` | **Everyone’s** tasks + this group’s WhatsApp history |
 
-| Env | Meaning | Example |
-|-----|---------|---------|
-| `ALLOWED_WHATSAPP_NUMBERS` | **People** who may command monsoon (digits only, no `+`) | `918291882204,918291884406,46704098198` |
-| `ALLOWED_WHATSAPP_CHAT_IDS` | **Conversations** where monsoon replies | self-chat `…@c.us` **and/or** group `…@g.us` |
-
-### Group “Todo” (recommended family surface)
+### Example (your setup)
 
 ```env
 ALLOWED_WHATSAPP_NUMBERS=918291882204,918291884406,46704098198
-ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us,120363410556549299@g.us
-MONSOON_ALLOW_SELF_CHAT=true
+ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us,120363410556549299@g.us,120363143633935585@g.us
+MONSOON_SHARED_CHAT_IDS=120363143633935585@g.us
 ```
 
-- `918291882204@c.us` = your Message yourself  
-- `120363410556549299@g.us` = WhatsApp group named **Todo**  
+- `918291882204@c.us` — your Message yourself (personal)
+- `120363410556549299@g.us` — **Todo** chore group (personal tasks per sender; digests stay private)
+- `120363143633935585@g.us` — **3 Phadnis** family group (shared space)
 
-Do **not** put member phones in `CHAT_IDS` for a group — only the group JID.
+## Why son’s digest showed Griham
 
-### 1:1 instead of a group
+Previously, digest fed the **global** WhatsApp/email index into Ollama. The model ignored his
+two tasks and summarized *your* atlas. Fixed: personal digests use **only that user’s tasks**.
 
-```env
-ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us,46704098198@c.us
-```
+## Shared family group behaviour
 
-## Find group id (notcoolio)
+In a shared chat:
 
-WAHA on host port **13000** (not 3000). Paste API key from Portainer:
+- `list` / `digest` → all allowlisted members’ open tasks (labeled by phone suffix)
+- free-text ask → those tasks + **messages from that group only** (indexed WA)
+- each `todo` still saves under the **sender’s** user (attribution)
 
-```bash
-curl -sS -H "X-Api-Key: PASTE_KEY" \
-  "http://127.0.0.1:13000/api/prakalp/chats?limit=100&sortBy=conversationTimestamp&sortOrder=desc" \
-  | python3 -c "
-import json,sys
-data=json.loads(sys.stdin.read())
-chats=data if isinstance(data,list) else data.get('chats') or data.get('data') or []
-for c in chats:
-    name=c.get('name') or c.get('subject') or ''
-    cid=c.get('id') or c.get('jid') or ''
-    if 'todo' in str(name).lower() or str(cid).endswith('@g.us'):
-        print(repr(name), cid)
-"
-```
+## Restaurant / “how was lunch?” memory
 
-## Verify after Portainer redeploy
+Indexing of WA history exists (`wa_messages`). **Group-scoped Q&A with multi-person
+opinions** (Sunday lunch → later recommendations) is the next layer: search + summarize
+with speaker attribution. Not fully productized yet — shared-chat ask now uses recent
+group lines; richer “5 restaurant links + past opinions” needs a dedicated retrieval pass.
 
-```bash
-curl -s http://127.0.0.1:8080/health/ready | python3 -m json.tool
-```
+## Find group ids
 
-`allowed_whatsapp_chat_ids` must include `120363410556549299@g.us`.
-
-Have him send `help` in **Todo**, then:
-
-```bash
-docker logs monsoon-app --tail 80 | grep -E 'chat_not_allowed|Rejected sender|Processing capture|from_me_peer'
-```
-
-| Log | Fix |
-|-----|-----|
-| `chat_not_allowed` … `chat_id=120363…@g.us` | Add that exact id to `CHAT_IDS`, redeploy |
-| `Rejected sender` … `participant=…` | Add his real digits to `NUMBERS` (e.g. `46704098198`) |
-| `Processing capture` | Allowlist OK — check WAHA send / session WORKING |
-| No lines | Webhook not firing — session/webhook |
-
-## Behaviour
-
-| Who / where | monsoon |
-|-------------|---------|
-| You → Message yourself | Your tasks |
-| Anyone allowlisted → Todo group | Their own task user; reply in the group |
-| You → typing in Todo | Ignored (`from_me_peer`) so family chat stays human |
+Host port **13000**, paste `WAHA_API_KEY` from Portainer — see earlier runbook / WAHA chats API.
 
 ## Smoke
 
-In **Todo**, from his phone:
+**Todo group (personal):** son `digest` → only his tasks (books, salon), never Griham.
 
-```text
-help
-todo call salon car detailing
-list today
-```
+**Family shared group:** after setting `MONSOON_SHARED_CHAT_IDS`, `list` shows everyone’s items.

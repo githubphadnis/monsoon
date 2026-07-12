@@ -268,3 +268,15 @@ def is_chat_allowed(chat_id: str, settings: Settings) -> bool:
         if candidates & chat_id_aliases(entry):
             return True
     return False
+
+
+def is_shared_chat(chat_id: str, settings: Settings) -> bool:
+    """True when this conversation is a shared family/space chat (pooled context)."""
+    shared = settings.shared_chat_ids_set
+    if not shared:
+        return False
+    candidates = chat_id_aliases(chat_id)
+    for entry in shared:
+        if candidates & chat_id_aliases(entry):
+            return True
+    return False

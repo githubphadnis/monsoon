@@ -30,6 +30,8 @@ class Settings(BaseSettings):
 
     allowed_whatsapp_numbers: str = ""
     allowed_whatsapp_chat_ids: str = ""
+    # Comma-separated group JIDs where all allowlisted members share tasks + group WA context
+    monsoon_shared_chat_ids: str = ""
     monsoon_allow_self_chat: bool = True
 
     ollama_base_url: str = "http://lenai:11434"
@@ -80,6 +82,10 @@ class Settings(BaseSettings):
     @property
     def allowed_chat_ids_set(self) -> set[str]:
         return {n.strip() for n in self.allowed_whatsapp_chat_ids.split(",") if n.strip()}
+
+    @property
+    def shared_chat_ids_set(self) -> set[str]:
+        return {n.strip() for n in self.monsoon_shared_chat_ids.split(",") if n.strip()}
 
     @property
     def gmail_configured(self) -> bool:

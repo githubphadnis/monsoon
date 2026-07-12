@@ -1,19 +1,23 @@
 # BREADCRUMBS — monsoon
 
-**Updated:** 2026-07-11
+**Updated:** 2026-07-12
 
 ## Done
 
-- Digest quality: tasks-first context; reject thank-you / numbered inbox dumps; require task grounding (`405968c`)
-- Family/peer 1:1 LID + from_me_peer (`24dc291`)
-- Ask path + quieter acks (`08a1d43`)
+- Personal digests isolated (no dad atlas leak into son's Todo group)
+- `MONSOON_SHARED_CHAT_IDS` for family pooled space (e.g. 3 Phadnis `…585@g.us`)
+- `todo:` colon parsing; warmer ask prompt
+- Earlier: group LID, twin webhook fix, digest quality
 
 ## Operator
 
-1. Redeploy `405968c` (digest fix).
-2. WhatsApp `digest` — should name open tasks, or fall back to `*Today — open tasks*` list (never Golf Meadows receipt essays).
-3. Son 1:1 smoke when awake (`docs/family-chat.md`).
+1. Pull/redeploy latest `main`.
+2. Portainer add (optional shared family):
+   `MONSOON_SHARED_CHAT_IDS=120363143633935585@g.us`
+   and include that JID in `ALLOWED_WHATSAPP_CHAT_IDS`.
+3. Smoke Todo group: son `digest` → only his tasks.
+4. Smoke family group: `list` → everyone's tasks.
 
 ## Branch
 
-- `main` pushed
+- `main` — push this session

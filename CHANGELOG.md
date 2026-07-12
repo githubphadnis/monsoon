@@ -13,6 +13,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 - Digest/reflect post-filter rejects entity-dump / thank-you fluff and falls back to SQL digest.
 - Allowlisted groups: prefer @g.us chat id; accept group participants even when only @lid (Todo family chat).
 - Webhook: handle only `message.any` (ignore twin `message` events); send WhatsApp ack before WorkFlowy mirror.
+- Personal digests/ask use **only that user’s tasks** (no global WA/email leak). `MONSOON_SHARED_CHAT_IDS` pools family tasks + group WA.
+- `todo:` / `Todo:` with colon parses as task create.
 - Peer 1:1 (family) support: inbound `@lid` resolves via `remoteJidAlt`; `from_me` in non–self chats ignored (`docs/family-chat.md`).
 - Reminder scheduler: due `remind_at` → WhatsApp; clears after successful send (idempotent).
 - `GMAIL_INCLUDE_SPAM_TRASH`; All Mail when `GMAIL_SYNC_LABEL` empty (Archive included).
