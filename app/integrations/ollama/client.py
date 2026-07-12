@@ -163,12 +163,15 @@ class OllamaClient:
             f"Current time ({self._settings.app_timezone}): {now_iso}\n"
             f"Message: {text.strip()}"
         )
+        model = self._settings.ollama_model_for("parse")
         try:
-            async with httpx.AsyncClient(timeout=float(self._settings.ollama_timeout_seconds)) as client:
+            async with httpx.AsyncClient(
+                timeout=self._settings.ollama_timeout_for("parse")
+            ) as client:
                 response = await client.post(
                     f"{self._base}/api/chat",
                     json={
-                        "model": self._settings.ollama_model,
+                        "model": model,
                         "stream": False,
                         "format": "json",
                         "messages": [
@@ -180,7 +183,7 @@ class OllamaClient:
                 response.raise_for_status()
                 content = response.json()["message"]["content"]
         except (httpx.HTTPError, KeyError, json.JSONDecodeError) as exc:
-            logger.warning("Ollama parse failed: %s", exc)
+            logger.warning("Ollama parse failed (model=%s): %s", model, exc)
             return None
 
         return self._parse_json_content(content)
@@ -191,10 +194,12 @@ class OllamaClient:
         user_prompt: str,
         system_prompt: str | None = None,
         temperature: float | None = None,
+        purpose: str = "chat",
     ) -> str | None:
         system = system_prompt or self._settings.monsoon_soul_prompt
+        model = self._settings.ollama_model_for(purpose)
         payload: dict = {
-            "model": self._settings.ollama_model,
+            "model": model,
             "stream": False,
             "messages": [
                 {"role": "system", "content": system},
@@ -205,7 +210,7 @@ class OllamaClient:
             payload["options"] = {"temperature": temperature}
         try:
             async with httpx.AsyncClient(
-                timeout=float(self._settings.ollama_timeout_seconds)
+                timeout=self._settings.ollama_timeout_for(purpose)
             ) as client:
                 response = await client.post(
                     f"{self._base}/api/chat",
@@ -214,7 +219,7 @@ class OllamaClient:
                 response.raise_for_status()
                 return response.json()["message"]["content"]
         except (httpx.HTTPError, KeyError, json.JSONDecodeError) as exc:
-            logger.warning("Ollama generate failed: %s", exc)
+            logger.warning("Ollama generate failed (model=%s): %s", model, exc)
             return None
 
     async def generate_digest(self, *, context_text: str, now_iso: str) -> str | None:
@@ -226,7 +231,10 @@ class OllamaClient:
             f"Context:\n{context_text}"
         )
         text = await self.generate_text(
-            user_prompt=user_prompt, system_prompt=system, temperature=0.2
+            user_prompt=user_prompt,
+            system_prompt=system,
+            temperature=0.2,
+            purpose="chat",
         )
         if not text:
             return None
@@ -246,7 +254,10 @@ class OllamaClient:
             f"Topic: {topic}\nCurrent time: {now_iso}\n\nContext:\n{context_text}"
         )
         text = await self.generate_text(
-            user_prompt=user_prompt, system_prompt=system, temperature=0.3
+            user_prompt=user_prompt,
+            system_prompt=system,
+            temperature=0.3,
+            purpose="chat",
         )
         if text and looks_like_bad_digest(text):
             logger.warning("Ollama reflect rejected as fluff/inbox dump")
@@ -262,7 +273,10 @@ class OllamaClient:
             f"Question:\n{question.strip()}"
         )
         return await self.generate_text(
-            user_prompt=user_prompt, system_prompt=system, temperature=0.4
+            user_prompt=user_prompt,
+            system_prompt=system,
+            temperature=0.4,
+            purpose="chat",
         )
 
     def _parse_json_content(self, content: str) -> ParsedCapture | None:

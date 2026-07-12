@@ -55,7 +55,11 @@ services:
       WAHA_SESSION: ${WAHA_SESSION:-prakalp}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://lenai:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      # Optional Auto routing: empty = use OLLAMA_MODEL for everything
+      OLLAMA_MODEL_PARSE: ${OLLAMA_MODEL_PARSE:-}
+      OLLAMA_MODEL_CHAT: ${OLLAMA_MODEL_CHAT:-}
       OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-60}
+      OLLAMA_CHAT_TIMEOUT_SECONDS: ${OLLAMA_CHAT_TIMEOUT_SECONDS:-0}
       MONSOON_SOUL_PROMPT: ${MONSOON_SOUL_PROMPT:-You are monsoon, a concise personal assistant. Be practical, proactive, and brief.}
       GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID:-}
       GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET:-}

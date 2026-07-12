@@ -9,6 +9,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Ollama Auto routing:** optional `OLLAMA_MODEL_PARSE` (fast JSON) + `OLLAMA_MODEL_CHAT`
+  (digest/reflect/ask). See `docs/ollama-models.md`. `OLLAMA_CHAT_TIMEOUT_SECONDS` for bigger models.
 - Conversational **`ask`** path: free-text / questions use Ollama + context slice instead of "I didn't catch that" or junk todos.
 - Digest/reflect post-filter rejects entity-dump / thank-you fluff and falls back to SQL digest.
 - Allowlisted groups: prefer @g.us chat id; accept group participants even when only @lid (Todo family chat).

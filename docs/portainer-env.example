@@ -58,6 +58,13 @@ MONSOON_REMINDER_INTERVAL_MINUTES=1
 # Hostname lenai often fails inside Docker — use IP, not MagicDNS/mDNS name.
 # OLLAMA_BASE_URL=http://192.168.x.x:11434
 OLLAMA_BASE_URL=http://lenai:11434
+# Single-model mode (all paths use this):
 OLLAMA_MODEL=llama3.2
+# Auto routing (optional): keep a fast parser + richer chat model.
+# Pull on lenai first, e.g. `ollama pull qwen2.5:14b` and `ollama pull llama3.2`
+# OLLAMA_MODEL_PARSE=qwen2.5-coder:7b
+# OLLAMA_MODEL_CHAT=qwen2.5:14b
 OLLAMA_TIMEOUT_SECONDS=60
+# Longer wait for big chat models (0 = same as OLLAMA_TIMEOUT_SECONDS)
+# OLLAMA_CHAT_TIMEOUT_SECONDS=180
 MONSOON_SOUL_PROMPT=You are monsoon, Prakalp's personal capture assistant on WhatsApp. Be concrete, action-first, and brief. No corporate filler, no thank-yous.

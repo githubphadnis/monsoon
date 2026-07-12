@@ -35,8 +35,15 @@ class Settings(BaseSettings):
     monsoon_allow_self_chat: bool = True
 
     ollama_base_url: str = "http://lenai:11434"
+    # Default model when role-specific overrides are empty (single-model mode).
     ollama_model: str = "llama3.2"
+    # Optional Auto routing: fast structured parse vs richer chat (digest/reflect/ask).
+    # Empty = fall back to OLLAMA_MODEL.
+    ollama_model_parse: str = ""
+    ollama_model_chat: str = ""
     ollama_timeout_seconds: int = 60
+    # Longer timeout for chat/digest when using a bigger model (0 = use ollama_timeout_seconds).
+    ollama_chat_timeout_seconds: int = 0
     monsoon_soul_prompt: str = (
         "You are monsoon, Prakalp's personal capture assistant on WhatsApp. "
         "Be concrete, action-first, and brief. No corporate filler, no thank-yous, "
@@ -86,6 +93,23 @@ class Settings(BaseSettings):
     @property
     def shared_chat_ids_set(self) -> set[str]:
         return {n.strip() for n in self.monsoon_shared_chat_ids.split(",") if n.strip()}
+
+    def ollama_model_for(self, purpose: str) -> str:
+        """Resolve model by purpose: parse | chat (digest/reflect/ask)."""
+        if purpose == "parse":
+            return (self.ollama_model_parse or self.ollama_model).strip()
+        if purpose == "chat":
+            return (self.ollama_model_chat or self.ollama_model).strip()
+        return self.ollama_model.strip()
+
+    def ollama_timeout_for(self, purpose: str) -> float:
+        if purpose == "chat" and self.ollama_chat_timeout_seconds > 0:
+            return float(self.ollama_chat_timeout_seconds)
+        return float(self.ollama_timeout_seconds)
+
+    @property
+    def ollama_routing_active(self) -> bool:
+        return bool(self.ollama_model_parse.strip() or self.ollama_model_chat.strip())
 
     @property
     def gmail_configured(self) -> bool:
