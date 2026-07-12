@@ -17,6 +17,7 @@ from app.integrations.whatsapp.webhook_setup import (
     get_webhook_status,
     webhook_reconciler_loop,
 )
+from app.services.waha_routing import all_waha_sessions
 
 settings = get_settings()
 logging.basicConfig(level=getattr(logging, settings.app_log_level.upper(), logging.INFO))
@@ -144,6 +145,8 @@ async def health_ready() -> dict[str, object]:
         "chat_allowlist_active": bool(settings.allowed_chat_ids_set),
         "ephemeral_seconds": settings.monsoon_ephemeral_seconds,
         "ephemeral_delete_commands": settings.monsoon_ephemeral_delete_commands,
+        "waha_session": settings.waha_session,
+        "waha_sessions": all_waha_sessions(settings),
     }
 
 

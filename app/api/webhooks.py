@@ -138,7 +138,13 @@ async def waha_webhook(
         )
         raise HTTPException(status_code=403, detail="Sender not allowed")
 
-    logger.info("Processing capture from=%s chat_id=%s phone=%s", sender, chat_id, phone)
+    logger.info(
+        "Processing capture from=%s chat_id=%s phone=%s session=%s",
+        sender,
+        chat_id,
+        phone,
+        event.session,
+    )
     service = CaptureService(db, settings)
     try:
         reply = await service.handle_text(
@@ -147,6 +153,7 @@ async def waha_webhook(
             sender_phone=phone,
             text=text,
             raw_payload=body,
+            waha_session=event.session,
         )
         logger.info("Webhook processed reply_sent=%s", bool(reply))
     except Exception:

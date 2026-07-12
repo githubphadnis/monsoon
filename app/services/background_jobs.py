@@ -88,28 +88,45 @@ async def _run_gmail_batch(settings: Settings) -> None:
 
 
 async def _run_wa_batch(settings: Settings) -> None:
+    from app.services.waha_routing import all_waha_sessions
+
     _set_status(WA_STATUS_KEY, status="running")
     try:
-        with SessionLocal() as db:
-            stats = await WaBackfillService(db, settings).run(
-                full=False,
-                max_chats=settings.monsoon_wa_sync_batch_chats,
-            )
+        sessions = all_waha_sessions(settings)
+        per_session_cap = max(1, settings.monsoon_wa_sync_batch_chats)
+        chats_synced = chats_updated = messages_inserted = messages_skipped = 0
+        contacts_upserted = entities_inserted = 0
+        errors: list[str] = []
+        for session_name in sessions:
+            with SessionLocal() as db:
+                stats = await WaBackfillService(db, settings, session=session_name).run(
+                    full=False,
+                    max_chats=per_session_cap,
+                )
+            chats_synced += stats.chats_synced
+            chats_updated += stats.chats_updated
+            messages_inserted += stats.messages_inserted
+            messages_skipped += stats.messages_skipped
+            contacts_upserted += stats.contacts_upserted
+            entities_inserted += stats.entities_inserted
+            errors.extend(f"{session_name}: {e}" for e in stats.errors)
         _set_status(
             WA_STATUS_KEY,
             status="ok",
-            chats_synced=stats.chats_synced,
-            chats_updated=stats.chats_updated,
-            messages_inserted=stats.messages_inserted,
-            messages_skipped=stats.messages_skipped,
-            contacts_upserted=stats.contacts_upserted,
-            entities_inserted=stats.entities_inserted,
-            errors=list(stats.errors),
+            sessions=sessions,
+            chats_synced=chats_synced,
+            chats_updated=chats_updated,
+            messages_inserted=messages_inserted,
+            messages_skipped=messages_skipped,
+            contacts_upserted=contacts_upserted,
+            entities_inserted=entities_inserted,
+            errors=errors[:20],
         )
         logger.info(
-            "Background WA batch: chats=%s msgs=%s",
-            stats.chats_synced + stats.chats_updated,
-            stats.messages_inserted,
+            "Background WA batch: sessions=%s chats=%s msgs=%s",
+            sessions,
+            chats_synced + chats_updated,
+            messages_inserted,
         )
     except Exception as exc:
         logger.exception("Background WA sync failed")

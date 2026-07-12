@@ -38,13 +38,13 @@ See `docs/family-model.md`.
 - Docker Compose deployment on `notcoolio`
 - Family personal lists + shared group (`docs/family-model.md`)
 - `@alias` task assignment; `delete <id>` soft-delete
+- Multi-session WAHA routing (`MONSOON_WAHA_SESSION_MAP`) for per-person Message yourself
 
 ### Explicitly excluded (deferred)
 
 - Reverse sync from WorkFlowy edits — v1.2+
 - Rich web UI — v1.2+ (admin/status only in v1)
-- Multi-tenant SaaS / public RBAC — out of scope
-- Per-person Message yourself via multi-WAHA sessions — MS-09
+- Per-tenant SaaS / public RBAC — out of scope
 - OpenLoomi replacement / unified assistant — separate effort
 - Full autonomous agent with tool-use loops — defer; monsoon suggests and nudges first
 

@@ -53,6 +53,10 @@ services:
       WAHA_BASE_URL: http://127.0.0.1:3000
       WAHA_API_KEY: ${WAHA_API_KEY:?Set WAHA_API_KEY}
       WAHA_SESSION: ${WAHA_SESSION:-prakalp}
+      # phone:session for multi-account Message yourself
+      MONSOON_WAHA_SESSION_MAP: ${MONSOON_WAHA_SESSION_MAP:-}
+      # Optional session:base_url when using multiple WAHA containers
+      MONSOON_WAHA_ENDPOINTS: ${MONSOON_WAHA_ENDPOINTS:-}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://lenai:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
       # Optional Auto routing: empty = use OLLAMA_MODEL for everything

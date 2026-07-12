@@ -65,6 +65,7 @@ class CaptureService:
         sender_phone: str | None = None,
         text: str,
         raw_payload: dict,
+        waha_session: str | None = None,
     ) -> str | None:
         existing = self._db.scalar(
             select(InboundMessage).where(InboundMessage.source_message_id == source_message_id)
@@ -88,6 +89,15 @@ class CaptureService:
         phone = sender_phone or resolved_sender.split("@", 1)[0]
         user = get_or_create_user(self._db, phone, self._settings)
 
+        from app.services.waha_routing import resolve_reply_session
+
+        reply_session = resolve_reply_session(
+            self._settings,
+            inbound_session=waha_session,
+            chat_id=chat_id,
+            sender_phone=phone,
+        )
+
         # Claim this message id before heavy work so a twin webhook cannot race.
         try:
             self._db.flush()
@@ -108,11 +118,12 @@ class CaptureService:
             logger.exception("Capture failed for %s", source_message_id)
 
         if reply:
-            await self._send_reply(chat_id, reply)
+            await self._send_reply(chat_id, reply, waha_session=reply_session)
             logger.info(
-                "Capture reply sent chat_id=%s phone=%s kind=%s",
+                "Capture reply sent chat_id=%s phone=%s session=%s kind=%s",
                 chat_id,
                 phone,
+                reply_session,
                 parsed.kind if parsed else "error",
             )
         await self._flush_pending_workflowy()
@@ -572,17 +583,22 @@ class CaptureService:
             "Try `digest`, `reflect <topic>`, or `todo …`."
         )
 
-    async def _send_reply(self, chat_id: str, text: str) -> None:
+    async def _send_reply(
+        self, chat_id: str, text: str, *, waha_session: str | None = None
+    ) -> None:
         outbound = OutboundMessage(
             channel="whatsapp",
             recipient=chat_id,
             message_body=text,
             status="pending",
+            waha_session=waha_session or self._settings.waha_session,
         )
         self._db.add(outbound)
         self._db.flush()
         try:
-            result = await self._waha.send_text(chat_id, text)
+            result = await self._waha.send_text(
+                chat_id, text, session=outbound.waha_session
+            )
             outbound.status = "sent"
             outbound.sent_at = datetime.now(ZoneInfo("UTC"))
             outbound.provider_message_id = extract_waha_message_id(result)

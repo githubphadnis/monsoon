@@ -32,11 +32,13 @@ class BackfillStats:
 
 
 class WaBackfillService:
-    def __init__(self, db: Session, settings: Settings) -> None:
+    def __init__(
+        self, db: Session, settings: Settings, *, session: str | None = None
+    ) -> None:
         self._db = db
         self._settings = settings
         self._waha = WahaClient(settings)
-        self._session = settings.waha_session
+        self._session = (session or settings.waha_session).strip() or settings.waha_session
         # JIDs inserted/loaded this run — SQLAlchemy flush batches hide pending rows from SELECT.
         self._contact_by_jid: dict[str, WaContact] = {}
 
@@ -68,7 +70,9 @@ class WaBackfillService:
                 self._set_chat_list_offset(offset)
                 break
             try:
-                chats = await self._waha.list_chats(limit=page_size, offset=offset)
+                chats = await self._waha.list_chats(
+                    limit=page_size, offset=offset, session=self._session
+                )
             except Exception as exc:
                 stats.errors.append(f"list_chats offset={offset}: {exc}")
                 logger.exception("list_chats failed")
@@ -152,7 +156,10 @@ class WaBackfillService:
         while True:
             try:
                 messages = await self._waha.get_chat_messages(
-                    chat.chat_id, limit=page_size, offset=offset
+                    chat.chat_id,
+                    limit=page_size,
+                    offset=offset,
+                    session=self._session,
                 )
             except Exception as exc:
                 stats.errors.append(f"messages {chat.chat_id} offset={offset}: {exc}")
@@ -298,7 +305,10 @@ class WaBackfillService:
             await asyncio.sleep(ms / 1000.0)
 
     def _get_chat_list_offset(self) -> int:
-        row = self._db.get(SyncState, CHAT_LIST_OFFSET_KEY)
+        key = f"{CHAT_LIST_OFFSET_KEY}:{self._session}"
+        row = self._db.get(SyncState, key)
+        if (not row or not row.value) and self._session == self._settings.waha_session:
+            row = self._db.get(SyncState, CHAT_LIST_OFFSET_KEY)
         if not row or not row.value:
             return 0
         try:
@@ -307,12 +317,13 @@ class WaBackfillService:
             return 0
 
     def _set_chat_list_offset(self, offset: int) -> None:
-        row = self._db.get(SyncState, CHAT_LIST_OFFSET_KEY)
+        key = f"{CHAT_LIST_OFFSET_KEY}:{self._session}"
+        row = self._db.get(SyncState, key)
         payload = {"offset": offset, "updated": datetime.now(UTC).isoformat()}
         if row:
             row.value = payload
         else:
-            self._db.add(SyncState(key=CHAT_LIST_OFFSET_KEY, value=payload))
+            self._db.add(SyncState(key=key, value=payload))
         self._db.flush()
 
 

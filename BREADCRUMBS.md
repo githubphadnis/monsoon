@@ -4,22 +4,21 @@
 
 ## Done
 
-- Family model realign docs (`docs/family-model.md`)
-- `@alias` assign + `delete <id>`
-- Ephemeral WA cleanup; Ollama Auto routing; digest isolation
+- MS-09 multi-session WAHA routing (`MONSOON_WAHA_SESSION_MAP`)
+- Family roster, @assign, delete, ephemeral, Ollama Auto
 
-## Operator
+## Operator (true Message yourself)
 
-Portainer (after pull):
-
-```
-ALLOWED_WHATSAPP_NUMBERS=918291882204,918291882206,918291884406,46704098198
-ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us,918291882206@c.us,918291884406@c.us,46704098198@c.us,120363143633935585@g.us
-MONSOON_SHARED_CHAT_IDS=120363143633935585@g.us
-MONSOON_USER_ALIASES=prakalp:918291882204,rashmi:918291882206,prathamesh:46704098198,prathu:46704098198
-```
-
-Rashmi/Prathamesh: message **monsoon number** 1:1 (not Message yourself on their phones).
+1. Pull/redeploy `main`.
+2. WAHA dashboard: create sessions `prakalp`, `rashmi`, `prathamesh` → QR each phone.
+3. Portainer:
+   ```
+   WAHA_SESSION=prakalp
+   MONSOON_WAHA_SESSION_MAP=918291882204:prakalp,918291882206:rashmi,46704098198:prathamesh,918291884406:prathamesh
+   ```
+   + allowlists / aliases / shared group from `docs/family-model.md`
+4. Smoke: each person `help` in Message yourself; family group still on Prakalp session.
+5. `/health/ready` → `waha_sessions` lists all three.
 
 ## Branch
 

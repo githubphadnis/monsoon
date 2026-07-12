@@ -2,26 +2,24 @@
 
 ## Last worked on
 
-2026-07-12 — family model realign; `@assign`; `delete`; ephemeral; Ollama Auto.
+2026-07-12 — MS-09 multi-session WAHA routing.
 
 ## Current state / WIP
 
-- **Family:** see `docs/family-model.md` (roster + single-WAHA truth).
-- **Assign:** `MONSOON_USER_ALIASES` + `todo @rashmi …`
-- **Ephemeral** WA message cleanup (default 5 min).
-- **LLM** optional parse/chat model split.
+- **Multi-session:** `MONSOON_WAHA_SESSION_MAP` + optional `MONSOON_WAHA_ENDPOINTS`.
+  Replies use inbound webhook session; reminders/ephemeral/backfill follow the map.
+- **Family:** `docs/family-model.md`
+- **Assign / delete / ephemeral / Ollama Auto** shipped.
 
 ## Operator priorities
 
-1. Redeploy `main`.
-2. Portainer env from `docs/family-model.md` (numbers, chat JIDs, aliases, shared group).
-3. Smoke: Rashmi 1:1 with monsoon number; family `@prakalp …`; personal `digest`.
-4. Optional: `OLLAMA_MODEL_CHAT=qwen2.5:14b` on lenai.
+1. Redeploy; create WAHA sessions + QR Rashmi/Prathamesh phones.
+2. Set `MONSOON_WAHA_SESSION_MAP` (and aliases / shared group).
+3. Smoke Message yourself per person + family `@assign`.
 
 ## Next product work
 
-- MS-09 multi-WAHA (true Message yourself per person) — if still desired
-- Notify assignee on `@assign` (DM ping)
+- MS-10 assign notify + shared done ([#9](https://github.com/githubphadnis/monsoon/issues/9))
 - Group RAG / lunch memory
 - MS-08 snooze
 

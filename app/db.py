@@ -2,7 +2,7 @@
 
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import get_settings
@@ -38,7 +38,18 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+def ensure_schema() -> None:
+    """Additive column patches for existing Postgres volumes (no Alembic yet)."""
+    statements = [
+        "ALTER TABLE outbound_messages ADD COLUMN IF NOT EXISTS waha_session VARCHAR(64)",
+    ]
+    with engine.begin() as conn:
+        for stmt in statements:
+            conn.execute(text(stmt))
+
+
 def init_db() -> None:
     from app.models import tables  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    ensure_schema()

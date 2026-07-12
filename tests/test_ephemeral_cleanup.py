@@ -40,7 +40,7 @@ async def test_ephemeral_deletes_old_outbound():
     stats = await EphemeralCleanupService(db, settings, waha=waha).run()
 
     waha.delete_message.assert_awaited_once_with(
-        "918291884406@c.us", "true_918291884406@c.us_XYZ"
+        "918291884406@c.us", "true_918291884406@c.us_XYZ", session="default"
     )
     assert old.status == "deleted"
     assert stats.outbound_deleted == 1
@@ -88,7 +88,7 @@ async def test_ephemeral_deletes_inbound_commands():
     stats = await EphemeralCleanupService(db, settings, waha=waha).run()
 
     waha.delete_message.assert_awaited_once_with(
-        "918291884406@c.us", "false_918291884406@c.us_CMD"
+        "918291884406@c.us", "false_918291884406@c.us_CMD", session="default"
     )
     assert inbound.status == "deleted"
     assert stats.inbound_deleted == 1

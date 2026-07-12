@@ -13,6 +13,7 @@ from app.config import Settings
 from app.integrations.whatsapp.waha_client import WahaClient
 from app.models import OutboundMessage, Task, TaskEvent, User
 from app.services.ephemeral_cleanup import extract_waha_message_id
+from app.services.waha_routing import session_for_phone
 
 logger = logging.getLogger("monsoon.reminders")
 
@@ -65,17 +66,19 @@ class ReminderService:
 
             chat_id = self._chat_id_for_user(user)
             body = self._format_reminder(task)
+            session = session_for_phone(self._settings, user.phone_number)
             outbound = OutboundMessage(
                 channel="whatsapp",
                 recipient=chat_id,
                 message_body=body,
                 status="pending",
+                waha_session=session,
             )
             self._db.add(outbound)
             self._db.flush()
 
             try:
-                result = await self._waha.send_text(chat_id, body)
+                result = await self._waha.send_text(chat_id, body, session=session)
                 outbound.status = "sent"
                 outbound.sent_at = datetime.now(UTC)
                 outbound.provider_message_id = extract_waha_message_id(result)
@@ -84,7 +87,11 @@ class ReminderService:
                     TaskEvent(
                         task_id=task.id,
                         event_type="reminder_sent",
-                        payload={"chat_id": chat_id, "title": task.title},
+                        payload={
+                            "chat_id": chat_id,
+                            "title": task.title,
+                            "waha_session": session,
+                        },
                     )
                 )
                 stats.sent += 1

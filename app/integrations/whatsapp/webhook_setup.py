@@ -1,4 +1,4 @@
-"""Configure WAHA session webhook to reach this app (idempotent)."""
+"""Configure WAHA session webhook(s) to reach this app (idempotent)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 
 from app.config import Settings
+from app.services.waha_routing import all_waha_sessions, base_url_for_session
 
 logger = logging.getLogger("monsoon.waha.webhook_setup")
 
@@ -28,9 +29,8 @@ def _session_headers(settings: Settings) -> dict[str, str]:
     return headers
 
 
-def _fetch_session(settings: Settings) -> dict[str, Any] | None:
-    base = settings.waha_base_url.rstrip("/")
-    session = settings.waha_session
+def _fetch_session(settings: Settings, session: str) -> dict[str, Any] | None:
+    base = base_url_for_session(settings, session)
     headers = _session_headers(settings)
 
     with httpx.Client(timeout=30.0) as client:
@@ -41,7 +41,7 @@ def _fetch_session(settings: Settings) -> dict[str, Any] | None:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as exc:
-            logger.warning("WAHA session fetch failed: %s", exc)
+            logger.warning("WAHA session fetch failed session=%s: %s", session, exc)
             return None
 
 
@@ -77,14 +77,14 @@ def _build_session_config(settings: Settings, session_data: dict[str, Any]) -> d
     return {"config": config}
 
 
-def get_webhook_status(settings: Settings) -> dict[str, Any]:
-    """Return current vs expected WAHA webhook configuration."""
+def get_webhook_status_for_session(settings: Settings, session: str) -> dict[str, Any]:
+    """Return current vs expected WAHA webhook configuration for one session."""
     target_url = expected_webhook_url(settings)
-    session_data = _fetch_session(settings)
+    session_data = _fetch_session(settings, session)
     if not session_data:
         return {
             "configured": False,
-            "session": settings.waha_session,
+            "session": session,
             "session_status": None,
             "expected_url": target_url,
             "current_urls": [],
@@ -108,7 +108,7 @@ def get_webhook_status(settings: Settings) -> dict[str, Any]:
 
     return {
         "configured": bool(url_ok and events_ok and store_ok),
-        "session": settings.waha_session,
+        "session": session,
         "session_status": status,
         "expected_url": target_url,
         "current_urls": current_urls,
@@ -119,41 +119,54 @@ def get_webhook_status(settings: Settings) -> dict[str, Any]:
     }
 
 
-def configure_waha_webhook(settings: Settings) -> bool:
-    """Point WAHA at monsoon. Returns True when session webhook is configured."""
+def get_webhook_status(settings: Settings) -> dict[str, Any]:
+    """Aggregate status across all configured WAHA sessions (primary + map)."""
+    sessions = all_waha_sessions(settings)
+    per = {name: get_webhook_status_for_session(settings, name) for name in sessions}
+    primary = per.get(settings.waha_session) or next(iter(per.values()), {})
+    all_ok = all(item.get("configured") for item in per.values()) if per else False
+    return {
+        **primary,
+        "configured": all_ok,
+        "sessions": sessions,
+        "per_session": per,
+    }
+
+
+def configure_waha_webhook_session(settings: Settings, session: str) -> bool:
+    """Point one WAHA session at monsoon. Returns True when configured."""
     if not settings.monsoon_auto_webhook:
         return False
 
     target_url = expected_webhook_url(settings)
-    status = get_webhook_status(settings)
+    status = get_webhook_status_for_session(settings, session)
     if status["configured"]:
-        logger.debug("WAHA webhook already correct for %s", settings.waha_session)
+        logger.debug("WAHA webhook already correct for %s", session)
         return True
 
     if status["session_status"] and status["session_status"] not in {"WORKING", "STARTING"}:
         logger.warning(
             "WAHA session %r status=%r — pair WhatsApp in dashboard first",
-            settings.waha_session,
+            session,
             status["session_status"],
         )
 
     headers = _session_headers(settings)
-    base = settings.waha_base_url.rstrip("/")
-    session = settings.waha_session
+    base = base_url_for_session(settings, session)
 
     with httpx.Client(timeout=30.0) as client:
         try:
             response = client.get(f"{base}/api/sessions/{session}", headers=headers)
             if response.status_code == 404:
                 logger.warning(
-                    "WAHA session %r not found yet — pair WhatsApp in dashboard, then redeploy app",
+                    "WAHA session %r not found yet — create/pair in dashboard, then redeploy",
                     session,
                 )
                 return False
             response.raise_for_status()
             session_data = response.json()
         except httpx.HTTPError as exc:
-            logger.warning("WAHA not ready for webhook setup: %s", exc)
+            logger.warning("WAHA not ready for webhook setup (%s): %s", session, exc)
             return False
 
         response = client.put(
@@ -165,7 +178,12 @@ def configure_waha_webhook(settings: Settings) -> bool:
             response.raise_for_status()
         except httpx.HTTPError as exc:
             body = response.text if response is not None else ""
-            logger.warning("WAHA webhook configure failed: %s body=%s", exc, body[:500])
+            logger.warning(
+                "WAHA webhook configure failed session=%s: %s body=%s",
+                session,
+                exc,
+                body[:500],
+            )
             return False
 
     logger.info(
@@ -177,8 +195,17 @@ def configure_waha_webhook(settings: Settings) -> bool:
     return True
 
 
+def configure_waha_webhook(settings: Settings) -> bool:
+    """Configure webhooks for every known session. True if all succeed."""
+    sessions = all_waha_sessions(settings)
+    if not sessions:
+        return False
+    results = [configure_waha_webhook_session(settings, name) for name in sessions]
+    return all(results)
+
+
 async def ensure_waha_webhook(settings: Settings, *, attempts: int = 12) -> None:
-    """Retry webhook setup until WAHA session exists (e.g. after Portainer redeploy)."""
+    """Retry webhook setup until WAHA sessions exist (e.g. after Portainer redeploy)."""
     if not settings.monsoon_auto_webhook:
         return
 
@@ -190,10 +217,16 @@ async def ensure_waha_webhook(settings: Settings, *, attempts: int = 12) -> None
 
     status = await asyncio.to_thread(get_webhook_status, settings)
     logger.warning(
-        "Could not configure WAHA webhook after %s attempts — status=%s current_urls=%s",
+        "Could not configure WAHA webhook after %s attempts — sessions=%s per=%s",
         attempts,
-        status.get("session_status"),
-        status.get("current_urls"),
+        status.get("sessions"),
+        {
+            name: {
+                "status": item.get("session_status"),
+                "urls": item.get("current_urls"),
+            }
+            for name, item in (status.get("per_session") or {}).items()
+        },
     )
 
 
@@ -209,9 +242,8 @@ async def webhook_reconciler_loop(settings: Settings) -> None:
             if status["configured"]:
                 continue
             logger.info(
-                "WAHA webhook mismatch (status=%s urls=%s) — reconfiguring",
-                status.get("session_status"),
-                status.get("current_urls"),
+                "WAHA webhook mismatch sessions=%s — reconfiguring",
+                status.get("sessions"),
             )
             await asyncio.to_thread(configure_waha_webhook, settings)
         except asyncio.CancelledError:

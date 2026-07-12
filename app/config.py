@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     waha_base_url: str = "http://127.0.0.1:3000"
     waha_api_key: str = ""
     waha_session: str = "default"
+    # phone:session map for multi-account Message yourself, e.g.
+    # 918291882204:prakalp,918291882206:rashmi,46704098198:prathamesh
+    monsoon_waha_session_map: str = ""
+    # Optional session:base_url for multi-container WAHA (empty = all use WAHA_BASE_URL)
+    # prakalp:http://127.0.0.1:3000,rashmi:http://127.0.0.1:3001
+    monsoon_waha_endpoints: str = ""
     waha_webhook_path: str = "/api/webhooks/waha"
 
     monsoon_auto_webhook: bool = True

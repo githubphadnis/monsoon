@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.integrations.whatsapp.waha_client import WahaClient
 from app.models import InboundMessage, OutboundMessage
+from app.services.waha_routing import session_for_chat_id
 
 logger = logging.getLogger("monsoon.ephemeral")
 
@@ -86,7 +87,12 @@ class EphemeralCleanupService:
                 row.status = "delete_skipped"
                 continue
             try:
-                await self._waha.delete_message(row.recipient, msg_id)
+                session = row.waha_session or session_for_chat_id(
+                    self._settings, row.recipient
+                )
+                await self._waha.delete_message(
+                    row.recipient, msg_id, session=session
+                )
                 row.status = "deleted"
                 stats.outbound_deleted += 1
             except Exception as exc:
@@ -126,7 +132,13 @@ class EphemeralCleanupService:
                 row.status = "delete_skipped"
                 continue
             try:
-                await self._waha.delete_message(row.chat_id, msg_id)
+                session = session_for_chat_id(self._settings, row.chat_id)
+                # Prefer session stamped on related outbound echo if present in raw payload
+                raw = row.raw_payload if isinstance(row.raw_payload, dict) else {}
+                inbound_session = raw.get("session")
+                if isinstance(inbound_session, str) and inbound_session.strip():
+                    session = inbound_session.strip()
+                await self._waha.delete_message(row.chat_id, msg_id, session=session)
                 row.status = "deleted"
                 stats.inbound_deleted += 1
             except Exception as exc:

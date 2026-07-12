@@ -9,39 +9,31 @@ Target roster (operator-confirmed 2026-07-12):
 | **Rashmi** | `918291882206` | Personal channel for *her* list | same |
 | **Family** | group `120363143633935585@g.us` (3 Phadnis) | Shared — everyone’s open tasks | same + `@name` assign |
 
-## What WhatsApp allows (important)
+## Multi-WAHA sessions (true Message yourself per person)
 
-Monsoon uses **one WAHA session** = **one** paired WhatsApp account.
+Preferred: **one** WAHA container, multiple sessions (free since WAHA 2026.6.1).
 
-| Desired | Possible today? |
-|---------|-----------------|
-| Prakalp Message yourself on `…2204` | Yes — if WAHA is paired to that number |
-| Rashmi / Prathamesh Message yourself on *their* phones | **No** on a single WAHA — those chats never hit the server |
-| Same people, private lists, full command set | **Yes** — each opens a **1:1 with the monsoon (WAHA) number**, or a private group (person + monsoon only) |
-| Family group shared list | Yes — `MONSOON_SHARED_CHAT_IDS` |
-| `@prakalp …` assign onto that person’s list | Yes — `MONSOON_USER_ALIASES` + `todo @name …` |
-
-**True “everyone Message yourself on their own number”** needs **multi-WAHA** (one session per phone) — not built yet (tracked as MS-09).
-
-## Recommended setup (single WAHA)
-
-Assume WAHA is paired to Prakalp’s `918291882204`.
+1. Dashboard → create sessions `prakalp`, `rashmi`, `prathamesh` → QR each phone.
+2. Portainer:
 
 ```env
+WAHA_SESSION=prakalp
+MONSOON_WAHA_SESSION_MAP=918291882204:prakalp,918291882206:rashmi,46704098198:prathamesh,918291884406:prathamesh
 ALLOWED_WHATSAPP_NUMBERS=918291882204,918291882206,918291884406,46704098198
 ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us,918291882206@c.us,918291884406@c.us,46704098198@c.us,120363143633935585@g.us
 MONSOON_SHARED_CHAT_IDS=120363143633935585@g.us
-MONSOON_USER_ALIASES=prakalp:918291882204,rashmi:918291882206,prathamesh:46704098198,prathu:46704098198,prathamesh_in:918291884406
 ```
 
-| Who | Where they type |
-|-----|-----------------|
-| Prakalp | Message yourself (`…2204@c.us`) |
-| Rashmi | 1:1 chat with `…2204` (her messages attributed to `…2206`) |
-| Prathamesh | 1:1 with `…2204` from Sweden or India number |
-| Everyone | 3 Phadnis group for shared / assign |
+3. Each person uses **Message yourself** on their own phone. Replies go out on the same session.
+4. Family group stays on the primary session (`WAHA_SESSION` / Prakalp’s number must be in the group).
 
-Optional private groups (`Monsoon — Rashmi` = Rashmi + monsoon only) instead of 1:1 clutter — allowlist those `@g.us` JIDs.
+Optional multi-container (old Core that only allows `default`):
+
+```env
+MONSOON_WAHA_ENDPOINTS=prakalp:http://127.0.0.1:3000,rashmi:http://127.0.0.1:3001,prathamesh:http://127.0.0.1:3002
+```
+
+Monsoon auto-wires webhooks for every session in the map.
 
 ## Assignment
 
