@@ -10,7 +10,9 @@ nudges.
 
 ## Target user
 
-Single operator (Prakalp) — personal productivity, not multi-tenant SaaS.
+Family operators (Prakalp, Rashmi, Prathamesh) — personal + shared WhatsApp spaces.
+Not multi-tenant SaaS; small allowlisted household on one WAHA session.
+See `docs/family-model.md`.
 
 ## Business value
 
@@ -34,12 +36,15 @@ Single operator (Prakalp) — personal productivity, not multi-tenant SaaS.
 - Morning digest (scheduled + `digest now`)
 - Health endpoints and structured logging
 - Docker Compose deployment on `notcoolio`
+- Family personal lists + shared group (`docs/family-model.md`)
+- `@alias` task assignment; `delete <id>` soft-delete
 
 ### Explicitly excluded (deferred)
 
 - Reverse sync from WorkFlowy edits — v1.2+
 - Rich web UI — v1.2+ (admin/status only in v1)
-- Multi-user / RBAC — out of scope
+- Multi-tenant SaaS / public RBAC — out of scope
+- Per-person Message yourself via multi-WAHA sessions — MS-09
 - OpenLoomi replacement / unified assistant — separate effort
 - Full autonomous agent with tool-use loops — defer; monsoon suggests and nudges first
 

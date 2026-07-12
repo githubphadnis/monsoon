@@ -130,3 +130,36 @@ async def test_unknown_ollama_becomes_ask_not_todo():
 
     assert parsed.kind == "ask"
 
+def test_todo_assign_leading_alias():
+    settings = Settings()
+    parsed = parse_with_regex('todo @rashmi book dentist', settings)
+    assert parsed is not None
+    assert parsed.kind == 'todo'
+    assert parsed.assignee_alias == 'rashmi'
+    assert 'book dentist' in (parsed.title or '')
+
+
+def test_bare_at_assign():
+    settings = Settings()
+    parsed = parse_with_regex('@prakalp buy PC', settings)
+    assert parsed is not None
+    assert parsed.kind == 'todo'
+    assert parsed.assignee_alias == 'prakalp'
+    assert parsed.title == 'buy PC'
+
+
+def test_todo_trailing_assign():
+    settings = Settings()
+    parsed = parse_with_regex('todo buy milk @prakalp', settings)
+    assert parsed is not None
+    assert parsed.kind == 'todo'
+    assert parsed.assignee_alias == 'prakalp'
+    assert 'buy milk' in (parsed.title or '')
+
+
+def test_delete_command():
+    settings = Settings()
+    parsed = parse_with_regex('delete 3', settings)
+    assert parsed is not None
+    assert parsed.kind == 'delete'
+    assert parsed.task_number == 3

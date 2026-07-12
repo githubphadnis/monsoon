@@ -46,7 +46,7 @@ class ReminderService:
             self._db.scalars(
                 select(Task)
                 .where(
-                    Task.status != "done",
+                    Task.status.notin_(("done", "deleted")),
                     Task.remind_at.is_not(None),
                     Task.remind_at <= now,
                 )

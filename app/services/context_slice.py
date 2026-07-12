@@ -54,7 +54,7 @@ def _fetch_open_tasks(db: Session, user_id) -> list[Task]:
     return list(
         db.scalars(
             select(Task)
-            .where(Task.user_id == user_id, Task.status != "done")
+            .where(Task.user_id == user_id, Task.status.notin_(("done", "deleted")))
             .order_by(Task.display_number.desc())
             .limit(20)
         )

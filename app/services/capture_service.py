@@ -19,26 +19,30 @@ from app.schemas.context import ContextSliceRequest
 from app.services.context_slice import build_context_slice
 from app.services.ephemeral_cleanup import extract_waha_message_id
 from app.services.parser import parse_capture
-from app.services.users import get_or_create_user
+from app.services.users import display_label_for, get_or_create_user, resolve_user_by_alias
 from app.services.workflowy_mirror import WorkFlowyMirrorService
 
 logger = logging.getLogger("monsoon.capture")
 
 HELP_TEXT = """monsoon — capture & remind
 
-todo / to do <task>       create task
+todo / to do <task>       create task (yours)
+todo @name <task>         assign to family member
+@name <task>              same as assign
 remind me to <task>       create task
 note <text>               save a note
 note <id> <text>          add context to task
 done / complete <id>      mark complete
+delete / remove <id>      remove task
 list / show today         open tasks
-digest / summary          action digest (tasks + context)
+digest / summary          action digest
 reflect <topic>           what's active on a topic
-ask anything              free-text questions (uses your context)
+ask anything              free-text questions
 help / ?                  this message
 
-Replies auto-clear after a few minutes so the chat stays light.
-Commands create tasks; other messages get an assistant reply."""
+Personal chats = your list. Family group = everyone's.
+Replies auto-clear after a few minutes.
+"""
 
 _URL_ONLY_RE = re.compile(r"^https?://\S+$", re.IGNORECASE)
 
@@ -161,6 +165,9 @@ class CaptureService:
         if parsed.kind == "done":
             return await self._complete_task(user, parsed.task_number)
 
+        if parsed.kind == "delete":
+            return await self._delete_task(user, parsed.task_number)
+
         if parsed.kind == "task_note":
             return await self._append_task_note(user, parsed, source_message_id)
 
@@ -192,8 +199,7 @@ class CaptureService:
         )
 
     def _owner_label(self, owner: User) -> str:
-        phone = owner.phone_number or "?"
-        return phone[-4:] if len(phone) >= 4 else phone
+        return display_label_for(owner, self._settings)
 
     def _wa_lines_for_chat(self, chat_id: str, *, limit: int = 30) -> list[str]:
         """Recent indexed WA lines from one conversation (group or 1:1)."""
@@ -241,7 +247,10 @@ class CaptureService:
         tasks = list(
             self._db.scalars(
                 select(Task)
-                .where(Task.user_id.in_(owner_by_id.keys()), Task.status != "done")
+                .where(
+                    Task.user_id.in_(owner_by_id.keys()),
+                    Task.status.notin_(("done", "deleted")),
+                )
                 .order_by(Task.display_number.desc())
                 .limit(40)
             )
@@ -328,10 +337,23 @@ class CaptureService:
         return cleaned[: limit - 1].rstrip() + "…"
 
     async def _create_task(self, user: User, parsed: ParsedCapture, source_message_id: str) -> str:
-        display_number = self._next_display_number(user.id)
+        owner = user
+        assign_note = ""
+        if parsed.assignee_alias:
+            assignee = resolve_user_by_alias(
+                self._db, parsed.assignee_alias, self._settings
+            )
+            if not assignee:
+                known = ", ".join(f"@{a}" for a in sorted(self._settings.user_alias_map))
+                hint = f" Known: {known}." if known else " Set MONSOON_USER_ALIASES."
+                return f"Unknown @{parsed.assignee_alias}.{hint}"
+            owner = assignee
+            assign_note = f" → @{display_label_for(owner, self._settings).lower()}"
+
+        display_number = self._next_display_number(owner.id)
         status = parsed.status or ("scheduled" if parsed.due_at else "inbox")
         task = Task(
-            user_id=user.id,
+            user_id=owner.id,
             display_number=display_number,
             title=parsed.title or "Untitled",
             notes=parsed.notes,
@@ -348,7 +370,11 @@ class CaptureService:
             TaskEvent(
                 task_id=task.id,
                 event_type="created_from_whatsapp",
-                payload={"parsed": parsed.model_dump(mode="json")},
+                payload={
+                    "parsed": parsed.model_dump(mode="json"),
+                    "created_by": user.phone_number,
+                    "owner": owner.phone_number,
+                },
             )
         )
 
@@ -358,10 +384,35 @@ class CaptureService:
             local = parsed.due_at.astimezone(tz) if parsed.due_at.tzinfo else parsed.due_at
             due_part = f" · {local.strftime('%a %d %b %H:%M')}"
 
-        reply = f"Saved · #{display_number} {self._short_title(task.title)}{due_part}"
-        # Mirror after WhatsApp ack (see _flush_pending_workflowy) so groups aren't blocked.
-        self._pending_workflowy_tasks.append((task, user))
+        reply = (
+            f"Saved · #{display_number} {self._short_title(task.title)}"
+            f"{assign_note}{due_part}"
+        )
+        self._pending_workflowy_tasks.append((task, owner))
         return reply
+
+    async def _delete_task(self, user: User, task_number: int | None) -> str:
+        if not task_number:
+            return "Usage: `delete <id>`"
+        task = self._db.scalar(
+            select(Task).where(
+                Task.user_id == user.id,
+                Task.display_number == task_number,
+                Task.status != "deleted",
+            )
+        )
+        if not task:
+            return f"No task #{task_number} on your list."
+        title = task.title
+        task.status = "deleted"
+        self._db.add(
+            TaskEvent(
+                task_id=task.id,
+                event_type="deleted_from_whatsapp",
+                payload={"by": user.phone_number},
+            )
+        )
+        return f"Deleted · #{task_number} {self._short_title(title)}"
 
     async def _append_task_note(
         self, user: User, parsed: ParsedCapture, source_message_id: str
@@ -433,7 +484,7 @@ class CaptureService:
             tasks = [
                 (o, t)
                 for o, t in tasks
-                if t.status != "done"
+                if t.status not in {"done", "deleted"}
                 and (
                     (t.due_at is not None and t.due_at.astimezone(tz).date() <= tomorrow)
                     or t.status in {"inbox", "today", "scheduled"}

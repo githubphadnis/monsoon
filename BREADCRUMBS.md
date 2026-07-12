@@ -4,17 +4,22 @@
 
 ## Done
 
-- Ephemeral WA cleanup (auto-delete replies + commands after TTL)
-- Personal digests isolated; shared family chats; Ollama Auto routing
-- Docs: per-person private channels (1:1 with monsoon number)
+- Family model realign docs (`docs/family-model.md`)
+- `@alias` assign + `delete <id>`
+- Ephemeral WA cleanup; Ollama Auto routing; digest isolation
 
 ## Operator
 
-1. Redeploy `main`.
-2. Wife/son: each opens **1:1 with monsoon number** (not Message yourself on their phone).
-3. Allowlist their `<digits>@c.us` in `ALLOWED_WHATSAPP_CHAT_IDS` + numbers.
-4. Ephemeral defaults on (5 min). Override: `MONSOON_EPHEMERAL_SECONDS=300` or `0` to disable.
-5. Optional: `OLLAMA_MODEL_CHAT=qwen2.5:14b` + pull on lenai.
+Portainer (after pull):
+
+```
+ALLOWED_WHATSAPP_NUMBERS=918291882204,918291882206,918291884406,46704098198
+ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us,918291882206@c.us,918291884406@c.us,46704098198@c.us,120363143633935585@g.us
+MONSOON_SHARED_CHAT_IDS=120363143633935585@g.us
+MONSOON_USER_ALIASES=prakalp:918291882204,rashmi:918291882206,prathamesh:46704098198,prathu:46704098198
+```
+
+Rashmi/Prathamesh: message **monsoon number** 1:1 (not Message yourself on their phones).
 
 ## Branch
 

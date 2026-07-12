@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     monsoon_ephemeral_seconds: int = 300
     monsoon_ephemeral_delete_commands: bool = True
     monsoon_ephemeral_interval_seconds: int = 30
+    # Family roster: alias:phone pairs, e.g. prakalp:918291882204,rashmi:918291882206
+    monsoon_user_aliases: str = ""
     gmail_include_spam_trash: bool = False  # set true to also index Spam/Trash
 
     @field_validator("gmail_sync_max_pages", mode="before")
@@ -115,6 +117,26 @@ class Settings(BaseSettings):
     @property
     def ollama_routing_active(self) -> bool:
         return bool(self.ollama_model_parse.strip() or self.ollama_model_chat.strip())
+
+    @property
+    def user_alias_map(self) -> dict[str, str]:
+        """Lowercase alias → phone digits."""
+        out: dict[str, str] = {}
+        for part in self.monsoon_user_aliases.split(","):
+            part = part.strip()
+            if not part or ":" not in part:
+                continue
+            alias, phone = part.split(":", 1)
+            alias_key = alias.strip().lstrip("@").lower()
+            phone_key = phone.strip().lstrip("+")
+            if alias_key and phone_key:
+                out[alias_key] = phone_key
+        return out
+
+    @property
+    def phone_alias_map(self) -> dict[str, str]:
+        """Phone digits → preferred display alias."""
+        return {phone: alias for alias, phone in self.user_alias_map.items()}
 
     @property
     def gmail_configured(self) -> bool:

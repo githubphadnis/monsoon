@@ -25,11 +25,18 @@ REMIND_RE = re.compile(
 )
 DONE_RE = re.compile(r"^(?:done|complete|finish|mark\s+done)\s+#?(\d+)\s*$", re.IGNORECASE)
 DONE_MARK_RE = re.compile(r"^mark\s+#?(\d+)\s+done\s*$", re.IGNORECASE)
+DELETE_RE = re.compile(r"^(?:delete|remove|cancel)\s+#?(\d+)\s*$", re.IGNORECASE)
 LIST_RE = re.compile(r"^(?:list|show|tasks?)(?:\s+(\w+))?\s*$", re.IGNORECASE)
 DIGEST_RE = re.compile(r"^(?:digest(?:\s+now)?|summary)\s*$", re.IGNORECASE)
 REFLECT_RE = re.compile(r"^reflect\s+(.+)$", re.IGNORECASE)
 NOTE_ON_TASK_RE = re.compile(r"^note\s+#?(\d+)\s+(.+)$", re.IGNORECASE)
 HELP_RE = re.compile(r"^(?:help|\?|commands)\s*$", re.IGNORECASE)
+# Leading @alias …  or  todo @alias …
+ASSIGN_TODO_RE = re.compile(
+    r"^(?:to[\s-]*do(?:\s*:|\s+)|assign(?:\s*:|\s+))?@([A-Za-z][\w.-]*)\s+(.+)$",
+    re.IGNORECASE,
+)
+INLINE_ASSIGNEE_RE = re.compile(r"@([A-Za-z][\w.-]*)")
 
 QUESTION_RE = re.compile(
     r"(?:\?$)|^(?:what|why|how|when|where|who|which|elaborate|explain|tell\s+me|"
@@ -38,7 +45,7 @@ QUESTION_RE = re.compile(
 )
 
 _COMMAND_KINDS = frozenset(
-    {"todo", "note", "task_note", "done", "list", "digest", "reflect", "help"}
+    {"todo", "note", "task_note", "done", "delete", "list", "digest", "reflect", "help"}
 )
 
 RELATIVE_RE = re.compile(
@@ -79,7 +86,7 @@ def _apply_relative_datetime(text: str, settings: Settings) -> tuple[str, dateti
 
 def _capture_from_match(match: re.Match[str], settings: Settings, *, kind: str, body: str) -> ParsedCapture:
     remainder = next(g for g in match.groups() if g is not None).strip()
-    title, due_at = _apply_relative_datetime(remainder, settings)
+    title, due_at, assignee = _split_assignee_and_due(remainder, settings)
     status = "scheduled" if due_at else "inbox"
     return ParsedCapture(
         kind=kind,
@@ -87,8 +94,22 @@ def _capture_from_match(match: re.Match[str], settings: Settings, *, kind: str, 
         due_at=due_at,
         remind_at=due_at,
         status=status,
+        assignee_alias=assignee,
         raw_command=body,
     )
+
+
+def _split_assignee_and_due(
+    text: str, settings: Settings
+) -> tuple[str, datetime | None, str | None]:
+    assignee: str | None = None
+    cleaned = text
+    found = INLINE_ASSIGNEE_RE.search(cleaned)
+    if found:
+        assignee = found.group(1).lower()
+        cleaned = INLINE_ASSIGNEE_RE.sub("", cleaned, count=1).strip(" ,.-")
+    title, due_at = _apply_relative_datetime(cleaned, settings)
+    return title, due_at, assignee
 
 
 def looks_like_question(text: str) -> bool:
@@ -117,6 +138,10 @@ def parse_with_regex(text: str, settings: Settings) -> ParsedCapture | None:
     if done_match:
         return ParsedCapture(kind="done", task_number=int(done_match.group(1)))
 
+    delete_match = DELETE_RE.match(body)
+    if delete_match:
+        return ParsedCapture(kind="delete", task_number=int(delete_match.group(1)))
+
     list_match = LIST_RE.match(body)
     if list_match:
         bucket = (list_match.group(1) or "today").lower()
@@ -128,6 +153,21 @@ def parse_with_regex(text: str, settings: Settings) -> ParsedCapture | None:
             kind="task_note",
             task_number=int(note_task_match.group(1)),
             title=note_task_match.group(2).strip(),
+            raw_command=body,
+        )
+
+    assign_lead = ASSIGN_TODO_RE.match(body)
+    if assign_lead:
+        alias = assign_lead.group(1).lower()
+        remainder = assign_lead.group(2).strip()
+        title, due_at = _apply_relative_datetime(remainder, settings)
+        return ParsedCapture(
+            kind="todo",
+            title=title,
+            due_at=due_at,
+            remind_at=due_at,
+            status="scheduled" if due_at else "inbox",
+            assignee_alias=alias,
             raw_command=body,
         )
 

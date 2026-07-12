@@ -11,6 +11,8 @@ ALLOWED_WHATSAPP_NUMBERS=918291882204
 ALLOWED_WHATSAPP_CHAT_IDS=918291882204@c.us
 # Shared family space — all allowlisted members see pooled tasks + this group's WA
 # MONSOON_SHARED_CHAT_IDS=120363143633935585@g.us
+# Family aliases for @assign (alias:phone)
+# MONSOON_USER_ALIASES=prakalp:918291882204,rashmi:918291882206,prathamesh:46704098198,prathu:46704098198
 MONSOON_ALLOW_SELF_CHAT=true
 MONSOON_AUTO_WEBHOOK=true
 

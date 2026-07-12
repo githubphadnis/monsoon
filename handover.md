@@ -2,32 +2,32 @@
 
 ## Last worked on
 
-2026-07-12 — ephemeral WA cleanup; personal channels docs; Ollama Auto routing; digest isolation.
+2026-07-12 — family model realign; `@assign`; `delete`; ephemeral; Ollama Auto.
 
 ## Current state / WIP
 
-- **Robot:** Gmail + WA background indexing; WorkFlowy; reminders; **ephemeral delete** (default 5 min).
-- **LLM:** digest / reflect / ask; optional `OLLAMA_MODEL_PARSE` + `OLLAMA_MODEL_CHAT`.
-- **Family:** personal digests per user; shared family via `MONSOON_SHARED_CHAT_IDS`.
-  See `docs/family-chat.md` — wife/son use **1:1 with monsoon number**, not Message yourself.
+- **Family:** see `docs/family-model.md` (roster + single-WAHA truth).
+- **Assign:** `MONSOON_USER_ALIASES` + `todo @rashmi …`
+- **Ephemeral** WA message cleanup (default 5 min).
+- **LLM** optional parse/chat model split.
 
 ## Operator priorities
 
-1. Redeploy `main`; confirm ephemeral in `/health/ready`.
-2. Allowlist wife/son `<digits>@c.us` + numbers; they message the monsoon WhatsApp.
-3. Optional: pull chat model on lenai + set `OLLAMA_MODEL_CHAT`.
-4. Smoke: wife `help` in 1:1 → reply → disappears ~5 min later.
+1. Redeploy `main`.
+2. Portainer env from `docs/family-model.md` (numbers, chat JIDs, aliases, shared group).
+3. Smoke: Rashmi 1:1 with monsoon number; family `@prakalp …`; personal `digest`.
+4. Optional: `OLLAMA_MODEL_CHAT=qwen2.5:14b` on lenai.
 
 ## Next product work
 
-- Group RAG (restaurant / lunch opinions)
+- MS-09 multi-WAHA (true Message yourself per person) — if still desired
+- Notify assignee on `@assign` (DM ping)
+- Group RAG / lunch memory
 - MS-08 snooze
-- Auto-link / active task (MS-06/07)
-- Morning outbound digest
 
 ## Environment
 
 | Host | Role |
 |------|------|
 | `notcoolio` | monsoon Portainer stack |
-| `lenai` | Ollama (`OLLAMA_BASE_URL` LAN IP preferred) |
+| `lenai` | Ollama |

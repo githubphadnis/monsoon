@@ -81,22 +81,27 @@ monsoon/
 | Command | Example |
 |---------|---------|
 | Capture | `todo buy milk tomorrow 8am` |
+| Assign | `todo @rashmi book dentist` / `@prakalp buy PC` |
 | Note | `note plumber said friday` |
 | List | `list today` |
 | Complete | `done 14` |
-| Snooze | `snooze 14 tomorrow 9am` |
-| Digest | `digest now` |
+| Delete | `delete 14` |
+| Digest | `digest` / `summary` |
 | Help | `help` |
+
+Family roster & channels: **[docs/family-model.md](./docs/family-model.md)**
 
 ## Documentation
 
 | Doc | Purpose |
 |-----|---------|
 | [project-manifest.md](./project-manifest.md) | V1 boundary & success criteria |
-| [ROADMAP.md](./ROADMAP.md) | Phased delivery plan |
-| [dev-docs.md](./dev-docs.md) | Architecture decisions & incidents |
+| [docs/family-model.md](./docs/family-model.md) | Family roster, personal vs shared, @assign |
 | [docs/deploy-portainer.md](./docs/deploy-portainer.md) | Portainer + GHCR deploy on notcoolio |
 | [docs/llm-integration.md](./docs/llm-integration.md) | Ollama / LLM pipeline |
+| [docs/ollama-models.md](./docs/ollama-models.md) | Model Auto routing |
+| [dev-docs.md](./dev-docs.md) | Architecture decisions & incidents |
+| [handover.md](./handover.md) | Ops snapshot |
 
 ## License
 

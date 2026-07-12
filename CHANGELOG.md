@@ -9,6 +9,9 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Family model docs** (`docs/family-model.md`): roster, personal vs shared, single-WAHA limits.
+- **`@alias` assignment** via `MONSOON_USER_ALIASES` (`todo @rashmi …`).
+- **`delete` / `remove` / `cancel <id>`** soft-deletes own task.
 - **Ephemeral WhatsApp cleanup:** auto-delete monsoon replies (and best-effort
   commands) after `MONSOON_EPHEMERAL_SECONDS` (default 300). See `docs/family-chat.md`.
 - **Ollama Auto routing:** optional `OLLAMA_MODEL_PARSE` (fast JSON) + `OLLAMA_MODEL_CHAT`
