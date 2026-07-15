@@ -116,6 +116,16 @@ async def test_generate_digest_rejects_entity_dump():
     assert not looks_like_bad_digest(
         "Finish the Griham website by Saturday. Call Hatim before 10:00 IST."
     )
+    assert looks_like_bad_digest(
+        "I'll reach out tomorrow morning to 催促他尽快提供所需的信息。"
+    )
+
+
+def test_contains_cjk():
+    from app.integrations.ollama.client import contains_cjk
+
+    assert contains_cjk("催促他尽快提供所需的信息")
+    assert not contains_cjk("Urge Kailash for the API key tomorrow.")
 
     settings = Settings(monsoon_soul_prompt="Soul prompt for monsoon")
     client = OllamaClient(settings)
