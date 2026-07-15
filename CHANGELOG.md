@@ -62,6 +62,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 - Natural-language delete/done (`delete eighty nine`, `delete long runner`) — no more
   ask-path inventing “deleted phone number …”.
+- Force English-only for digest/ask/reflect (reject/retry CJK code-switch from qwen etc.).
 - `reflect <topic>` only feeds on-topic tasks (no more merging notebooks into dashcam or padding with infra).
 - Ephemeral delete: serialize bare WAHA message hashes to `true_<chatJid>_<hash>` (fixes 500 parseMessageIdSerialized).
 - Multi-session: group webhooks only processed by the **primary** WAHA session (stops double capture from Rashmi/Prathamesh fans).

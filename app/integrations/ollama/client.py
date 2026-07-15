@@ -28,7 +28,8 @@ or conversational messages. No markdown. No explanation. JSON only."""
 
 DIGEST_INSTRUCTION = (
     "You write Prakalp's personal *action digest* for WhatsApp.\n"
-    "This is NOT customer support, NOT a meeting summary, NOT an inbox review.\n\n"
+    "This is NOT customer support, NOT a meeting summary, NOT an inbox review.\n"
+    "LANGUAGE: English only — never Chinese, never mix scripts.\n\n"
     "GOOD example:\n"
     "Open: finish Griham website/ppt by Saturday; buy PC for P3; fix bappa mandir lights. "
     "Call Hatim before 10:00 IST. Next: ship the website draft, then order the PC.\n\n"
@@ -47,6 +48,7 @@ DIGEST_INSTRUCTION = (
 
 REFLECT_INSTRUCTION = (
     "Reflect on the named topic using only the provided context.\n"
+    "LANGUAGE: English only — never Chinese or other CJK characters; names stay Latin script.\n"
     "Write flowing WhatsApp prose (2–3 short paragraphs) covering: what's active, "
     "blockers/risks, and one next step — not labeled staccato headers.\n"
     "CRITICAL: Stay on the topic. Use only tasks/notes that clearly match it.\n"
@@ -60,6 +62,7 @@ REFLECT_INSTRUCTION = (
 ASK_INSTRUCTION = (
     "You are monsoon — a sharp, friendly assistant on WhatsApp, not a corporate bot. "
     "Answer like a helpful teammate: warm, specific, and short (1–3 paragraphs).\n"
+    "LANGUAGE: English only — never Chinese or other CJK characters.\n"
     "Use ## Tasks and ## Your WhatsApp when present; quote concrete titles or snippets.\n"
     "Stay on the question — do not invent links between unrelated backlog items.\n"
     "CRITICAL: You cannot delete WhatsApp contacts, phone numbers, chats, or messages. "
@@ -97,12 +100,21 @@ _BAD_DIGEST_MARKERS = (
 )
 
 _NUMBERED_TOPIC_RE = re.compile(r"(?m)^\s*\d+\.\s+\*")
+# CJK Unified Ideographs + extensions / kana / hangul — qwen etc. sometimes code-switch.
+_CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]")
+
+
+def contains_cjk(text: str) -> bool:
+    """True when the reply mixes Chinese/Japanese/Korean script."""
+    return bool(_CJK_RE.search(text or ""))
 
 
 def looks_like_bad_digest(text: str) -> bool:
     """True when the model wrote support-desk / inbox fluff instead of an action digest."""
     normalized = (text or "").strip()
     if not normalized:
+        return True
+    if contains_cjk(normalized):
         return True
     lower = normalized.lower()
     if any(marker in lower for marker in _BAD_DIGEST_MARKERS):
@@ -231,6 +243,41 @@ class OllamaClient:
             logger.warning("Ollama generate failed (model=%s): %s", model, exc)
             return None
 
+    async def _ensure_english_reply(
+        self,
+        text: str | None,
+        *,
+        user_prompt: str,
+        system_prompt: str,
+        temperature: float,
+        purpose: str = "chat",
+    ) -> str | None:
+        """Reject/retry when bilingual models (e.g. qwen) slip into Chinese."""
+        if not text:
+            return None
+        if not contains_cjk(text):
+            return text
+        logger.warning("Ollama reply mixed CJK script — retrying English-only")
+        retry_system = (
+            f"{system_prompt}\n\n"
+            "CRITICAL RETRY: Your previous draft mixed Chinese/CJK characters. "
+            "Rewrite the entire answer in English only. Zero Chinese characters."
+        )
+        retry_prompt = (
+            f"{user_prompt}\n\n"
+            "Reminder: English only. Do not use Chinese."
+        )
+        rewritten = await self.generate_text(
+            user_prompt=retry_prompt,
+            system_prompt=retry_system,
+            temperature=min(temperature, 0.15),
+            purpose=purpose,
+        )
+        if rewritten and not contains_cjk(rewritten):
+            return rewritten
+        logger.warning("Ollama reply still mixed CJK after retry — rejecting")
+        return None
+
     async def generate_digest(self, *, context_text: str, now_iso: str) -> str | None:
         system = f"{self._settings.monsoon_soul_prompt}\n\n{DIGEST_INSTRUCTION}"
         user_prompt = (
@@ -244,6 +291,12 @@ class OllamaClient:
             system_prompt=system,
             temperature=0.2,
             purpose="chat",
+        )
+        text = await self._ensure_english_reply(
+            text,
+            user_prompt=user_prompt,
+            system_prompt=system,
+            temperature=0.2,
         )
         if not text:
             return None
@@ -268,6 +321,12 @@ class OllamaClient:
             temperature=0.3,
             purpose="chat",
         )
+        text = await self._ensure_english_reply(
+            text,
+            user_prompt=user_prompt,
+            system_prompt=system,
+            temperature=0.3,
+        )
         if text and looks_like_bad_digest(text):
             logger.warning("Ollama reflect rejected as fluff/inbox dump")
             return None
@@ -281,11 +340,17 @@ class OllamaClient:
             f"Current time: {now_iso}\n\nContext:\n{context_text}\n\n"
             f"Question:\n{question.strip()}"
         )
-        return await self.generate_text(
+        text = await self.generate_text(
             user_prompt=user_prompt,
             system_prompt=system,
             temperature=0.4,
             purpose="chat",
+        )
+        return await self._ensure_english_reply(
+            text,
+            user_prompt=user_prompt,
+            system_prompt=system,
+            temperature=0.4,
         )
 
     def _parse_json_content(self, content: str) -> ParsedCapture | None:

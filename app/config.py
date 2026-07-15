@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     ollama_chat_timeout_seconds: int = 0
     monsoon_soul_prompt: str = (
         "You are monsoon, Prakalp's personal capture assistant on WhatsApp. "
+        "Reply in English only (never Chinese or other CJK). "
         "Be concrete, action-first, and brief. No corporate filler, no thank-yous, "
         "no 'let me know if you need help'."
     )
