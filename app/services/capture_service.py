@@ -32,8 +32,8 @@ todo @name <task>         assign to family member
 remind me to <task>       create task
 note <text>               save a note
 note <id> <text>          add context to task
+delete / remove <id>      remove task (also: delete eighty nine / delete long runner)
 done / complete <id>      mark complete
-delete / remove <id>      remove task
 list / show today         open tasks
 digest / summary          action digest
 reflect <topic>           what's active (tasks + your WA)
@@ -174,10 +174,14 @@ class CaptureService:
             return self._list_tasks(user, parsed.status or "today", chat_id=chat_id)
 
         if parsed.kind == "done":
-            return await self._complete_task(user, parsed.task_number)
+            return await self._complete_task(
+                user, parsed.task_number, title_query=parsed.title
+            )
 
         if parsed.kind == "delete":
-            return await self._delete_task(user, parsed.task_number)
+            return await self._delete_task(
+                user, parsed.task_number, title_query=parsed.title
+            )
 
         if parsed.kind == "task_note":
             return await self._append_task_note(user, parsed, source_message_id)
@@ -436,18 +440,90 @@ class CaptureService:
         self._pending_workflowy_tasks.append((task, owner))
         return reply
 
-    async def _delete_task(self, user: User, task_number: int | None) -> str:
-        if not task_number:
-            return "Usage: `delete <id>`"
-        task = self._db.scalar(
-            select(Task).where(
-                Task.user_id == user.id,
-                Task.display_number == task_number,
-                Task.status != "deleted",
+    def _find_open_task(
+        self,
+        user: User,
+        *,
+        task_number: int | None = None,
+        title_query: str | None = None,
+    ) -> Task | list[Task] | None:
+        """Resolve one open task by display # or unique title substring."""
+        if task_number is not None:
+            return self._db.scalar(
+                select(Task).where(
+                    Task.user_id == user.id,
+                    Task.display_number == task_number,
+                    Task.status != "deleted",
+                )
+            )
+
+        q = (title_query or "").strip()
+        if not q:
+            return None
+        pattern = f"%{q}%"
+        matches = list(
+            self._db.scalars(
+                select(Task)
+                .where(
+                    Task.user_id == user.id,
+                    Task.status.notin_(("done", "deleted")),
+                    Task.title.ilike(pattern),
+                )
+                .order_by(Task.display_number.desc())
+                .limit(8)
             )
         )
-        if not task:
-            return f"No task #{task_number} on your list."
+        if not matches:
+            compact = re.sub(r"\s+", "", q)
+            if compact and compact.lower() != q.lower():
+                all_open = list(
+                    self._db.scalars(
+                        select(Task).where(
+                            Task.user_id == user.id,
+                            Task.status.notin_(("done", "deleted")),
+                        )
+                    )
+                )
+                matches = [
+                    t
+                    for t in all_open
+                    if compact.lower() in re.sub(r"\s+", "", t.title or "").lower()
+                ][:8]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            return matches
+        return None
+
+    async def _delete_task(
+        self,
+        user: User,
+        task_number: int | None,
+        *,
+        title_query: str | None = None,
+    ) -> str:
+        found = self._find_open_task(
+            user, task_number=task_number, title_query=title_query
+        )
+        if found is None:
+            if task_number:
+                return f"No task #{task_number} on your list."
+            if title_query:
+                return (
+                    f"No open task matching `{title_query}`. "
+                    "Try `list today` then `delete <id>`."
+                )
+            return "Usage: `delete <id>` or `delete <title words>`"
+
+        if isinstance(found, list):
+            lines = [f"#{t.display_number} {self._short_title(t.title)}" for t in found]
+            return (
+                "Several matches — say which id:\n"
+                + "\n".join(lines)
+                + "\nExample: `delete 89`"
+            )
+
+        task = found
         title = task.title
         task.status = "deleted"
         self._db.add(
@@ -489,14 +565,30 @@ class CaptureService:
         )
         return f"Noted · {self._short_title(parsed.title)}"
 
-    async def _complete_task(self, user: User, task_number: int | None) -> str:
-        if not task_number:
-            return "Usage: `done <id>` or `complete <id>`"
-        task = self._db.scalar(
-            select(Task).where(Task.user_id == user.id, Task.display_number == task_number)
+    async def _complete_task(
+        self,
+        user: User,
+        task_number: int | None,
+        *,
+        title_query: str | None = None,
+    ) -> str:
+        found = self._find_open_task(
+            user, task_number=task_number, title_query=title_query
         )
-        if not task:
-            return f"No task #{task_number} found."
+        if found is None:
+            if task_number:
+                return f"No task #{task_number} found."
+            if title_query:
+                return (
+                    f"No open task matching `{title_query}`. "
+                    "Try `list today` then `done <id>`."
+                )
+            return "Usage: `done <id>` or `complete <id>`"
+        if isinstance(found, list):
+            lines = [f"#{t.display_number} {self._short_title(t.title)}" for t in found]
+            return "Several matches — say which id:\n" + "\n".join(lines)
+
+        task = found
         if task.status == "done":
             return f"Already done · {self._short_title(task.title)}"
         task.status = "done"
@@ -507,7 +599,9 @@ class CaptureService:
         try:
             await self._workflowy.complete_task(task)
         except Exception:
-            logger.exception("WorkFlowy complete failed for task #%s", task_number)
+            logger.exception(
+                "WorkFlowy complete failed for task #%s", task.display_number
+            )
 
         return f"Done · {self._short_title(task.title)}"
 

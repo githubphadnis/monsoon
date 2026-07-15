@@ -159,7 +159,40 @@ def test_todo_trailing_assign():
 
 def test_delete_command():
     settings = Settings()
-    parsed = parse_with_regex('delete 3', settings)
+    parsed = parse_with_regex("delete 3", settings)
     assert parsed is not None
-    assert parsed.kind == 'delete'
+    assert parsed.kind == "delete"
     assert parsed.task_number == 3
+
+
+def test_delete_spoken_number():
+    settings = Settings()
+    for cmd in (
+        "Delete number eighty nine",
+        "delete task number eighty-nine",
+        "delete #89",
+        "remove task 89",
+    ):
+        parsed = parse_with_regex(cmd, settings)
+        assert parsed is not None, cmd
+        assert parsed.kind == "delete", cmd
+        assert parsed.task_number == 89, cmd
+
+
+def test_delete_by_title_words():
+    settings = Settings()
+    parsed = parse_with_regex("Delete long runner", settings)
+    assert parsed is not None
+    assert parsed.kind == "delete"
+    assert parsed.task_number is None
+    assert parsed.title == "long runner"
+
+
+def test_spoken_number_helper():
+    from app.services.parser import spoken_number_to_int
+
+    assert spoken_number_to_int("eighty nine") == 89
+    assert spoken_number_to_int("eighty-nine") == 89
+    assert spoken_number_to_int("91") == 91
+    assert spoken_number_to_int("twelve") == 12
+    assert spoken_number_to_int("long runner") is None
