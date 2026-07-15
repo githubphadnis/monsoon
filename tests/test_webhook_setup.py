@@ -11,6 +11,7 @@ def test_configure_succeeds_when_only_primary_exists():
         waha_session="prakalp",
         monsoon_waha_session_map="918291882206:rashmi,46704098198:prathamesh",
         monsoon_auto_webhook=True,
+        waha_api_key="secret",
     )
 
     def fake_status(_settings, session: str) -> dict:
@@ -62,3 +63,26 @@ def test_configure_fails_when_primary_missing():
         side_effect=fake_status,
     ):
         assert configure_waha_webhook(settings) is False
+
+
+def test_webhook_match_requires_api_key_header():
+    from app.integrations.whatsapp.webhook_setup import _webhook_matches
+
+    settings = Settings(waha_api_key="secret")
+    hook = {
+        "url": "http://127.0.0.1:8080/api/webhooks/waha",
+        "events": ["message.any"],
+    }
+    assert (
+        _webhook_matches(
+            hook, settings, target_url="http://127.0.0.1:8080/api/webhooks/waha"
+        )
+        is False
+    )
+    hook["customHeaders"] = [{"name": "X-Api-Key", "value": "secret"}]
+    assert (
+        _webhook_matches(
+            hook, settings, target_url="http://127.0.0.1:8080/api/webhooks/waha"
+        )
+        is True
+    )

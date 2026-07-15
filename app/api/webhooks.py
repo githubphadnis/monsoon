@@ -29,8 +29,17 @@ def _verify_webhook_key(
 ) -> None:
     if not settings.waha_api_key:
         return
+    if not x_api_key:
+        logger.warning(
+            "Webhook rejected: missing X-Api-Key header "
+            "(WAHA session webhook likely has no customHeaders — reconciler will rewrite)"
+        )
+        raise HTTPException(status_code=401, detail="Invalid webhook API key")
     if x_api_key != settings.waha_api_key:
-        logger.warning("Webhook rejected: missing or invalid X-Api-Key")
+        logger.warning(
+            "Webhook rejected: X-Api-Key mismatch "
+            "(Portainer WAHA_API_KEY != header on WAHA webhook config)"
+        )
         raise HTTPException(status_code=401, detail="Invalid webhook API key")
 
 

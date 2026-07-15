@@ -77,6 +77,32 @@ def _build_session_config(settings: Settings, session_data: dict[str, Any]) -> d
     return {"config": config}
 
 
+def _webhook_has_expected_api_key(hook: dict[str, Any], settings: Settings) -> bool:
+    """True when the webhook will send the same X-Api-Key monsoon expects."""
+    expected = (settings.waha_api_key or "").strip()
+    if not expected:
+        return True
+    headers = hook.get("customHeaders") or hook.get("custom_headers") or []
+    if not isinstance(headers, list):
+        return False
+    for item in headers:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").lower()
+        if name in {"x-api-key", "x-api_key"}:
+            return str(item.get("value") or "") == expected
+    return False
+
+
+def _webhook_matches(hook: dict[str, Any], settings: Settings, *, target_url: str) -> bool:
+    if hook.get("url") != target_url:
+        return False
+    events = set(hook.get("events") or [])
+    if "message.any" not in events:
+        return False
+    return _webhook_has_expected_api_key(hook, settings)
+
+
 def get_webhook_status_for_session(settings: Settings, session: str) -> dict[str, Any]:
     """Return current vs expected WAHA webhook configuration for one session."""
     target_url = expected_webhook_url(settings)
@@ -89,33 +115,57 @@ def get_webhook_status_for_session(settings: Settings, session: str) -> dict[str
             "expected_url": target_url,
             "current_urls": [],
             "events_ok": False,
+            "auth_ok": False,
             "noweb_store_enabled": False,
             "noweb_store_expected": settings.waha_noweb_store_enabled,
             "detail": "session_not_found",
         }
 
-    webhooks = session_data.get("config", {}).get("webhooks", [])
-    current_urls = [hook.get("url", "") for hook in webhooks if isinstance(hook, dict)]
+    webhooks = [
+        hook
+        for hook in (session_data.get("config", {}).get("webhooks") or [])
+        if isinstance(hook, dict)
+    ]
+    current_urls = [hook.get("url", "") for hook in webhooks]
+    matching = [
+        hook for hook in webhooks if _webhook_matches(hook, settings, target_url=target_url)
+    ]
     url_ok = target_url in current_urls
     events_ok = any(
-        isinstance(hook, dict)
-        and hook.get("url") == target_url
-        and "message.any" in set(hook.get("events") or [])
+        hook.get("url") == target_url and "message.any" in set(hook.get("events") or [])
         for hook in webhooks
     )
+    auth_ok = bool(matching) if settings.waha_api_key else events_ok
+    # Extra webhooks to the same URL without auth still fire and cause 401 noise.
+    unauth_dupes = [
+        hook
+        for hook in webhooks
+        if hook.get("url") == target_url and not _webhook_has_expected_api_key(hook, settings)
+    ]
     store_ok = (not settings.waha_noweb_store_enabled) or _noweb_store_enabled(session_data)
     status = session_data.get("status")
+    configured = bool(matching) and store_ok and not unauth_dupes
+    detail = None
+    if not configured:
+        if unauth_dupes and matching:
+            detail = "duplicate_webhook_without_api_key"
+        elif url_ok and events_ok and not auth_ok:
+            detail = "webhook_missing_api_key"
+        else:
+            detail = "webhook_or_store_mismatch"
 
     return {
-        "configured": bool(url_ok and events_ok and store_ok),
+        "configured": configured,
         "session": session,
         "session_status": status,
         "expected_url": target_url,
         "current_urls": current_urls,
         "events_ok": events_ok,
+        "auth_ok": auth_ok,
+        "webhook_count": len(webhooks),
         "noweb_store_enabled": _noweb_store_enabled(session_data),
         "noweb_store_expected": settings.waha_noweb_store_enabled,
-        "detail": None if url_ok and events_ok and store_ok else "webhook_or_store_mismatch",
+        "detail": detail,
     }
 
 
