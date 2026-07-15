@@ -12,18 +12,21 @@ from app.models import OutboundMessage
 # Self-chat echoes bot replies with fromMe=true — match our confirmation templates.
 _BOT_REPLY_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^(?:Task|Note) #\d+ created:", re.IGNORECASE),
-    re.compile(r"^Saved · #\d+", re.IGNORECASE),
-    re.compile(r"^Noted · #\d+", re.IGNORECASE),
+    re.compile(r"^Saved · ", re.IGNORECASE),
+    re.compile(r"^Noted · ", re.IGNORECASE),
+    re.compile(r"^Deleted · ", re.IGNORECASE),
     re.compile(r"^Done — #\d+:", re.IGNORECASE),
-    re.compile(r"^Done · #\d+", re.IGNORECASE),
-    re.compile(r"^Already done · #\d+", re.IGNORECASE),
-    re.compile(r"^No task #\d+ found\.", re.IGNORECASE),
+    re.compile(r"^Done · ", re.IGNORECASE),
+    re.compile(r"^Already done · ", re.IGNORECASE),
+    re.compile(r"^No task #\d+", re.IGNORECASE),
     re.compile(r"^Task #\d+ is already done\.", re.IGNORECASE),
     re.compile(r"^No tasks for ", re.IGNORECASE),
     re.compile(r"^\*today\*", re.IGNORECASE),
     re.compile(r"^\*tomorrow\*", re.IGNORECASE),
+    re.compile(r"^\*family ", re.IGNORECASE),
     re.compile(r"^\*Digest\*", re.IGNORECASE),
     re.compile(r"^\*Today — open tasks\*", re.IGNORECASE),
+    re.compile(r"^\*Family — open tasks\*", re.IGNORECASE),
     re.compile(r"^Nothing open right now\.", re.IGNORECASE),
     re.compile(r"^I didn't catch that\.", re.IGNORECASE),
     re.compile(r"^Couldn't reach the assistant", re.IGNORECASE),
@@ -34,6 +37,7 @@ _BOT_REPLY_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^Usage: `done <id>`", re.IGNORECASE),
     re.compile(r"^Usage: `note <id>", re.IGNORECASE),
     re.compile(r"^Usage: `reflect ", re.IGNORECASE),
+    re.compile(r"^Usage: `delete <id>`", re.IGNORECASE),
 )
 
 

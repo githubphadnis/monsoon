@@ -396,7 +396,7 @@ class CaptureService:
             due_part = f" · {local.strftime('%a %d %b %H:%M')}"
 
         reply = (
-            f"Saved · #{display_number} {self._short_title(task.title)}"
+            f"Saved · {self._short_title(task.title)}"
             f"{assign_note}{due_part}"
         )
         self._pending_workflowy_tasks.append((task, owner))
@@ -423,7 +423,7 @@ class CaptureService:
                 payload={"by": user.phone_number},
             )
         )
-        return f"Deleted · #{task_number} {self._short_title(title)}"
+        return f"Deleted · {self._short_title(title)}"
 
     async def _append_task_note(
         self, user: User, parsed: ParsedCapture, source_message_id: str
@@ -453,7 +453,7 @@ class CaptureService:
                 payload={"body": parsed.title, "source_message_id": source_message_id},
             )
         )
-        return f"Noted · #{parsed.task_number} {self._short_title(parsed.title)}"
+        return f"Noted · {self._short_title(parsed.title)}"
 
     async def _complete_task(self, user: User, task_number: int | None) -> str:
         if not task_number:
@@ -464,7 +464,7 @@ class CaptureService:
         if not task:
             return f"No task #{task_number} found."
         if task.status == "done":
-            return f"Already done · #{task_number}"
+            return f"Already done · {self._short_title(task.title)}"
         task.status = "done"
         self._db.add(
             TaskEvent(task_id=task.id, event_type="completed_from_whatsapp", payload={})
@@ -475,7 +475,7 @@ class CaptureService:
         except Exception:
             logger.exception("WorkFlowy complete failed for task #%s", task_number)
 
-        return f"Done · #{task_number} {self._short_title(task.title)}"
+        return f"Done · {self._short_title(task.title)}"
 
     def _list_tasks(self, user: User, bucket: str, *, chat_id: str) -> str:
         tz = ZoneInfo(self._settings.app_timezone)
