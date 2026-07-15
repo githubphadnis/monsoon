@@ -120,16 +120,33 @@ def get_webhook_status_for_session(settings: Settings, session: str) -> dict[str
 
 
 def get_webhook_status(settings: Settings) -> dict[str, Any]:
-    """Aggregate status across all configured WAHA sessions (primary + map)."""
+    """Aggregate status across all configured WAHA sessions (primary + map).
+
+    ``configured`` is True when every *existing* session is wired. Missing
+    secondary sessions do not fail the aggregate (those are still pending pair).
+    """
     sessions = all_waha_sessions(settings)
     per = {name: get_webhook_status_for_session(settings, name) for name in sessions}
-    primary = per.get(settings.waha_session) or next(iter(per.values()), {})
-    all_ok = all(item.get("configured") for item in per.values()) if per else False
+    primary_name = (settings.waha_session or "default").strip()
+    primary = per.get(primary_name) or next(iter(per.values()), {})
+    existing = [
+        item
+        for item in per.values()
+        if item.get("detail") != "session_not_found"
+    ]
+    all_existing_ok = all(item.get("configured") for item in existing) if existing else False
+    primary_ok = bool(primary.get("configured"))
     return {
         **primary,
-        "configured": all_ok,
+        "configured": primary_ok and all_existing_ok,
+        "primary_configured": primary_ok,
         "sessions": sessions,
         "per_session": per,
+        "pending_sessions": [
+            name
+            for name, item in per.items()
+            if item.get("detail") == "session_not_found"
+        ],
     }
 
 
@@ -158,8 +175,8 @@ def configure_waha_webhook_session(settings: Settings, session: str) -> bool:
         try:
             response = client.get(f"{base}/api/sessions/{session}", headers=headers)
             if response.status_code == 404:
-                logger.warning(
-                    "WAHA session %r not found yet — create/pair in dashboard, then redeploy",
+                logger.info(
+                    "WAHA session %r not found yet — create/pair in dashboard (reconciler will retry)",
                     session,
                 )
                 return False
@@ -196,16 +213,37 @@ def configure_waha_webhook_session(settings: Settings, session: str) -> bool:
 
 
 def configure_waha_webhook(settings: Settings) -> bool:
-    """Configure webhooks for every known session. True if all succeed."""
+    """Configure webhooks for every known session.
+
+    Returns True when the *primary* ``WAHA_SESSION`` is configured.
+    Secondary sessions that do not exist yet (dashboard not created) are skipped
+    so app startup is not blocked; the reconciler picks them up later.
+    """
+    primary = (settings.waha_session or "default").strip()
     sessions = all_waha_sessions(settings)
     if not sessions:
         return False
-    results = [configure_waha_webhook_session(settings, name) for name in sessions]
-    return all(results)
+
+    primary_ok = False
+    for name in sessions:
+        status = get_webhook_status_for_session(settings, name)
+        if status.get("detail") == "session_not_found":
+            if name == primary:
+                logger.warning("Primary WAHA session %r not found yet", name)
+            else:
+                logger.info(
+                    "Secondary WAHA session %r not created yet — skipping until dashboard pair",
+                    name,
+                )
+            continue
+        ok = configure_waha_webhook_session(settings, name)
+        if name == primary:
+            primary_ok = ok
+    return primary_ok
 
 
-async def ensure_waha_webhook(settings: Settings, *, attempts: int = 12) -> None:
-    """Retry webhook setup until WAHA sessions exist (e.g. after Portainer redeploy)."""
+async def ensure_waha_webhook(settings: Settings, *, attempts: int = 8) -> None:
+    """Retry until the primary WAHA session webhook is set (secondaries optional)."""
     if not settings.monsoon_auto_webhook:
         return
 
@@ -213,11 +251,12 @@ async def ensure_waha_webhook(settings: Settings, *, attempts: int = 12) -> None
         if await asyncio.to_thread(configure_waha_webhook, settings):
             return
         if attempt < attempts:
-            await asyncio.sleep(5 * attempt)
+            # Cap backoff so a slow WAHA cannot exceed Docker start_period badly.
+            await asyncio.sleep(min(15, 3 * attempt))
 
     status = await asyncio.to_thread(get_webhook_status, settings)
     logger.warning(
-        "Could not configure WAHA webhook after %s attempts — sessions=%s per=%s",
+        "Could not configure primary WAHA webhook after %s attempts — sessions=%s per=%s",
         attempts,
         status.get("sessions"),
         {

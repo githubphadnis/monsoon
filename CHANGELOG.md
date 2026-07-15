@@ -12,6 +12,8 @@ versioning follows [Semantic Versioning](https://semver.org/).
 - **MS-09 multi-session WAHA routing:** `MONSOON_WAHA_SESSION_MAP` + optional
   `MONSOON_WAHA_ENDPOINTS`; replies/reminders/ephemeral use the inbound session;
   webhook auto-config for all sessions. See `docs/family-model.md`.
+  Startup only requires the **primary** session; missing `rashmi`/`prathamesh`
+  sessions no longer block app boot (reconciler retries).
 - **Family model docs** (`docs/family-model.md`): roster, personal vs shared, single-WAHA limits.
 - **`@alias` assignment** via `MONSOON_USER_ALIASES` (`todo @rashmi …`).
 - **`delete` / `remove` / `cancel <id>`** soft-deletes own task.
