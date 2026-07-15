@@ -2,25 +2,26 @@
 
 ## Last worked on
 
-2026-07-15 — Personal ask/reflect use person-scoped WhatsApp corpus.
+2026-07-15 — Personal ask/reflect use person-scoped WhatsApp corpus; WA index catch-up done.
 
 ## Current state / WIP
 
-- WA backfill catch-up (prakalp done; Rashmi/Prathamesh operator-run).
-- Personal `ask` / `reflect` pull `## Your WhatsApp` from that user's WAHA session
-  (topic-filtered; Message yourself included). Digests remain tasks-only.
+- Multi-session WAHA, ephemeral deletes, topic-scoped reflect, quiet acks — on `main`.
+- Personal `ask` / `reflect` → tasks + `## Your WhatsApp` (person's WAHA session).
+- Digests stay tasks-only. Gmail sync paused until refresh token re-auth.
+- Operator: indexing complete for prakalp / Rashmi / Prathamesh; redeployed.
 
 ## Operator priorities
 
-1. Finish `--full --session Rashmi` / `Prathamesh`; redeploy for ask wiring + progress UI.
-2. Smoke: free-text ask about something already in indexed WA.
-3. Optional next: WorkFlowy per-person roots.
+1. Smoke personal ask/reflect on a known indexed topic.
+2. Optional: Gmail OAuth re-run when email in digests is wanted again.
+3. Product next: WorkFlowy per-person + TASK vs CONTEXT depth gate.
 
 ## Next product work
 
-- WorkFlowy per-person separation
+- WorkFlowy: per-person roots; TASK vs CONTEXT; optional LLM “promote deeper?”
 - MS-10 assign notify ([#9](https://github.com/githubphadnis/monsoon/issues/9))
-- Gmail re-auth when email digests wanted again
+- Gmail re-auth
 
 ## Environment
 

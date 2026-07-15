@@ -1,7 +1,7 @@
 # Breadcrumbs — monsoon
 
-**Last:** Personal ask + reflect → person-scoped WA index (`## Your WhatsApp`).
+**Last:** Personal ask/reflect + WA full index (all sessions); operator redeployed.
 
-**Now:** Redeploy `main`; finish Rashmi/Prathamesh `--full` indexing; smoke ask.
+**Now:** Smoke ask/reflect against indexed corpus.
 
-**Next:** WorkFlowy per-person roots (if desired).
+**Next:** WorkFlowy per-person + TASK vs CONTEXT depth (not started).
