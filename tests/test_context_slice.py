@@ -105,6 +105,46 @@ def test_open_tasks_appear_in_output(db: Session, settings: Settings, user: User
     assert result.char_count > 0
 
 
+def test_topic_filter_scopes_tasks(db: Session, settings: Settings, user: User):
+    """reflect <topic> must not dump unrelated open tasks into the LLM context."""
+    db.add(
+        Task(
+            user_id=user.id,
+            display_number=10,
+            title="buy SD card for dashcam",
+            status="today",
+            due_at=None,
+        )
+    )
+    db.add(
+        Task(
+            user_id=user.id,
+            display_number=11,
+            title="buy notebooks for school",
+            status="inbox",
+        )
+    )
+    db.add(
+        Task(
+            user_id=user.id,
+            display_number=12,
+            title="infra plan for tools / server capacity",
+            status="inbox",
+        )
+    )
+    db.commit()
+
+    filtered = build_context_slice(
+        db,
+        settings,
+        ContextSliceRequest(user_id=user.id, topic="dashcam"),
+    )
+    assert "dashcam" in filtered.tasks_text.lower()
+    assert "notebooks" not in filtered.tasks_text.lower()
+    assert "infra" not in filtered.tasks_text.lower()
+    assert "server" not in filtered.tasks_text.lower()
+
+
 def test_task_context_appears_in_output(db: Session, settings: Settings, user: User):
     task = Task(
         user_id=user.id,

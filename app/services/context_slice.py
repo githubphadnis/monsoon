@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, func, or_, select
@@ -12,11 +13,32 @@ from app.models import EmailMessage, ExtractedEntity, Task, TaskContextItem, WaC
 from app.schemas.context import ContextSlice, ContextSliceRequest
 
 
+def topic_match_tokens(topic: str | None) -> list[str]:
+    """Meaningful tokens for topic filters (full phrase first, then words ≥4 chars)."""
+    raw = (topic or "").strip().lower()
+    if not raw:
+        return []
+    tokens = [raw]
+    for word in re.findall(r"[a-z0-9]{4,}", raw):
+        if word not in tokens:
+            tokens.append(word)
+    return tokens
+
+
+def text_matches_topic(text: str | None, topic: str | None) -> bool:
+    if not topic:
+        return True
+    hay = (text or "").lower()
+    if not hay:
+        return False
+    return any(tok in hay for tok in topic_match_tokens(topic))
+
+
 def build_context_slice(
     db: Session, settings: Settings, request: ContextSliceRequest
 ) -> ContextSlice:
     tz = ZoneInfo(settings.app_timezone)
-    tasks = _fetch_open_tasks(db, request.user_id)
+    tasks = _fetch_open_tasks(db, request.user_id, topic=request.topic)
     task_lines = [_format_task_line(task, tz) for task in tasks]
     task_context_lines = _fetch_task_context_lines(db, tasks, request.topic)
     email_lines, email_ids = _fetch_email_lines(db, request.topic)
@@ -50,15 +72,24 @@ def build_context_slice(
     )
 
 
-def _fetch_open_tasks(db: Session, user_id) -> list[Task]:
-    return list(
-        db.scalars(
-            select(Task)
-            .where(Task.user_id == user_id, Task.status.notin_(("done", "deleted")))
-            .order_by(Task.display_number.desc())
-            .limit(20)
-        )
+def _fetch_open_tasks(
+    db: Session, user_id, topic: str | None = None
+) -> list[Task]:
+    stmt = (
+        select(Task)
+        .where(Task.user_id == user_id, Task.status.notin_(("done", "deleted")))
+        .order_by(Task.display_number.desc())
+        .limit(40 if topic else 20)
     )
+    tokens = topic_match_tokens(topic)
+    if tokens:
+        conditions = []
+        for tok in tokens:
+            pattern = f"%{tok}%"
+            conditions.append(Task.title.ilike(pattern))
+            conditions.append(Task.notes.ilike(pattern))
+        stmt = stmt.where(or_(*conditions)).limit(20)
+    return list(db.scalars(stmt))
 
 
 def _format_task_line(task: Task, tz: ZoneInfo) -> str:

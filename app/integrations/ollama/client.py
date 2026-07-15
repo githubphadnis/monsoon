@@ -46,9 +46,13 @@ DIGEST_INSTRUCTION = (
 )
 
 REFLECT_INSTRUCTION = (
-    "Reflect on the named topic using only the provided context. "
+    "Reflect on the named topic using only the provided context.\n"
     "Write flowing WhatsApp prose (2–3 short paragraphs) covering: what's active, "
-    "blockers/risks, and one next step — not labeled staccato headers. "
+    "blockers/risks, and one next step — not labeled staccato headers.\n"
+    "CRITICAL: Stay on the topic. Use only tasks/notes that clearly match it.\n"
+    "Do NOT merge unrelated open tasks into one story (e.g. dashcam SD card ≠ notebooks).\n"
+    "If the context has nothing on-topic, say so briefly and suggest `todo …` — "
+    "do not invent links or pad with other backlog items.\n"
     "Max ~1000 chars. Do not thank the user, invent facts, dump addresses/phones, "
     "or write customer-support fluff. Never lead with Task #N / #N / id:T."
 )

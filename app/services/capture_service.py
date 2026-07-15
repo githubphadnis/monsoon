@@ -280,6 +280,15 @@ class CaptureService:
         if self._is_shared(chat):
             parts: list[str] = []
             scoped = self._tasks_for_scope(user, chat)
+            if topic:
+                from app.services.context_slice import text_matches_topic
+
+                scoped = [
+                    (o, t)
+                    for o, t in scoped
+                    if text_matches_topic(t.title, topic)
+                    or text_matches_topic(t.notes, topic)
+                ]
             if scoped:
                 tz = ZoneInfo(self._settings.app_timezone)
                 lines = []
@@ -297,6 +306,10 @@ class CaptureService:
                 wa_lines = [ln for ln in wa_lines if t in ln.lower()][:20]
             if wa_lines:
                 parts.append("## This group (WhatsApp)\n" + "\n".join(wa_lines))
+            if topic and not parts:
+                return (
+                    f"No open tasks or recent group messages matching `{topic}`."
+                )
             return "\n\n".join(parts) if parts else "No shared context in this group yet."
 
         # Personal — tasks only (prevents dad's atlas leaking into son's digest/ask)
@@ -310,6 +323,8 @@ class CaptureService:
             parts.append(f"## Tasks\n{slice_.tasks_text}")
         if slice_.task_context_text:
             parts.append(f"## Task Context\n{slice_.task_context_text}")
+        if topic and not parts:
+            return f"No open tasks matching `{topic}`."
         return "\n\n".join(parts) if parts else "No open tasks yet."
 
     def _digest_context_bundle(self, user: User, *, chat_id: str) -> str:
