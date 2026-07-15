@@ -57,18 +57,19 @@ Used by `digest` and `reflect` before every Ollama call.
 
 | Command | Behavior |
 |---------|----------|
-| `digest` / `summary` | Ollama soul + context slice (tasks/email/WA, **no entity dump**) → prose action digest; SQL fallback |
+| `digest` / `summary` | Rich personal summary: open tasks + person WA (+ Gmail for daily-digest phones); SQL fallback |
 | `reflect griham` | Topic-filtered slice → reflection on what's active |
 | Free-text questions | `ask` path — Ollama answers using the same context slice |
 | Explicit `todo` / `remind` / `note` | Create tasks (regex or high-confidence parse) |
 
 ### Context awareness (status)
 
-**Now:** personal `ask` / `reflect` use open tasks + **person-scoped WhatsApp**
-(from that user's WAHA session index, topic-filtered). Digests stay tasks-first
-(no global email/WA leak). Entity lists are stored but **not** fed into LLM prompts.
+**Now:** personal `ask` / `reflect` use open tasks + **person-scoped WhatsApp**.
+Personal `digest` / scheduled **daily summary** add recent WA; **Gmail** only for
+phones in `MONSOON_DAILY_DIGEST_PHONES` (default: primary WAHA session phones — you).
+Morning push: `MONSOON_DAILY_DIGEST_HOUR` / `_MINUTE` in `APP_TIMEZONE`.
 
-**Later:** auto-link free text to an active task (MS-06/07), morning outbound digest.
+**Later:** auto-link free text to an active task (MS-06/07).
 
 ### Deferred UX ideas
 

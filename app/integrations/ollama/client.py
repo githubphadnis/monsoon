@@ -27,23 +27,24 @@ Use kind=todo only for clear task creation. Use kind=unknown for questions
 or conversational messages. No markdown. No explanation. JSON only."""
 
 DIGEST_INSTRUCTION = (
-    "You write Prakalp's personal *action digest* for WhatsApp.\n"
-    "This is NOT customer support, NOT a meeting summary, NOT an inbox review.\n"
-    "LANGUAGE: English only — never Chinese, never mix scripts.\n\n"
+    "You write Prakalp's personal *daily action summary* for WhatsApp.\n"
+    "LANGUAGE: English only — never Chinese, never mix scripts.\n"
+    "This is NOT customer support, NOT a meeting summary dump.\n\n"
     "GOOD example:\n"
     "Open: finish Griham website/ppt by Saturday; buy PC for P3; fix bappa mandir lights. "
-    "Call Hatim before 10:00 IST. Next: ship the website draft, then order the PC.\n\n"
+    "Call Hatim before 10:00 IST. WA: Kailash still owes the API key. "
+    "Email: one invoice needs paying today. Next: ship the website draft, then chase Kailash.\n\n"
     "BAD example (never do this):\n"
     "Thank you for reaching out. 1. Golf Meadows receipts… 2. WhatsApp messages… "
     "feel free to let me know if you need help.\n\n"
     "Rules:\n"
-    "- Build the reply from ## Open tasks first. Use task titles verbatim.\n"
-    "- 2–4 short WhatsApp paragraphs (or tight prose). Max ~900 characters.\n"
+    "- ## Open tasks is PRIMARY — use those titles.\n"
+    "- ## Your WhatsApp / ## Recent email: mention at most 2–3 signals that create a today action.\n"
+    "- 2–4 short WhatsApp paragraphs. Max ~1100 characters.\n"
     "- End with 1–2 concrete next actions for today.\n"
-    "- Optional email/WA signals: mention at most ONE only if it creates a today action.\n"
     "- NEVER thank the user, never 'reaching out' / 'queries' / 'feel free' / 'let me know'.\n"
-    "- NEVER number-list inbox topics (receipts, insurance ads, greetings, society mail).\n"
-    "- NEVER invent facts. NEVER dump phones/emails. NEVER lead with Task #N."
+    "- NEVER number-list inbox topics. NEVER invent facts. NEVER dump phones/emails. "
+    "NEVER lead with Task #N."
 )
 
 REFLECT_INSTRUCTION = (

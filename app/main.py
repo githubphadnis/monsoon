@@ -118,6 +118,12 @@ def health_scheduler() -> dict[str, object]:
         "workflowy_interval_minutes": settings.monsoon_workflowy_sync_interval_minutes,
         "reminder_interval_minutes": settings.monsoon_reminder_interval_minutes,
         "ephemeral_seconds": settings.monsoon_ephemeral_seconds,
+        "daily_digest_enabled": settings.monsoon_daily_digest_enabled,
+        "daily_digest_local_time": (
+            f"{settings.monsoon_daily_digest_hour:02d}:"
+            f"{settings.monsoon_daily_digest_minute:02d}"
+        ),
+        "daily_digest_phones": settings.daily_digest_recipient_phones(),
         **scheduler_status(),
     }
 

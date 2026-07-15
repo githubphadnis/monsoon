@@ -35,7 +35,7 @@ note <id> <text>          add context to task
 delete / remove <id>      remove task (also: delete eighty nine / delete long runner)
 done / complete <id>      mark complete
 list / show today         open tasks
-digest / summary          action digest
+digest / summary          daily-style summary (tasks + your WA; email if yours)
 reflect <topic>           what's active (tasks + your WA)
 ask / free text           questions using your tasks + WhatsApp
 help / ?                  this message
@@ -345,32 +345,47 @@ class CaptureService:
         return "\n\n".join(parts) if parts else "No open tasks yet."
 
     def _digest_context_bundle(self, user: User, *, chat_id: str) -> str:
-        """Digest input: personal = own tasks only; shared = family tasks (+ group WA)."""
+        """Digest: shared = family tasks (+ group WA); personal = tasks + WA (+ Gmail if allowed)."""
         if self._is_shared(chat_id):
             return self._context_bundle(user, chat_id=chat_id)
 
+        from app.services.waha_routing import session_for_phone
+
+        person_session = session_for_phone(self._settings, user.phone_number)
+        include_email = self._settings.digest_includes_email_for(user.phone_number)
         slice_ = build_context_slice(
             self._db,
             self._settings,
             ContextSliceRequest(
                 user_id=user.id,
                 topic=None,
-                max_chars=4000,
-                include_wa=False,
-                include_email=False,
+                max_chars=8000,
+                waha_session=person_session,
+                include_wa=True,
+                include_email=include_email,
+                include_from_me=True,
             ),
         )
         parts: list[str] = []
         if slice_.tasks_text:
             parts.append(
-                "## Open tasks (PRIMARY — build the digest from these only)\n"
+                "## Open tasks (PRIMARY — build the digest from these)\n"
                 + slice_.tasks_text
             )
         if slice_.task_context_text:
             note_lines = slice_.task_context_text.splitlines()[:12]
             parts.append("## Notes on those tasks\n" + "\n".join(note_lines))
-        # No global Email/WhatsApp — that leaked other people's atlas into digests.
+        if slice_.wa_messages_text:
+            wa_lines = slice_.wa_messages_text.splitlines()[:18]
+            parts.append("## Your WhatsApp\n" + "\n".join(wa_lines))
+        if slice_.emails_text:
+            email_lines = slice_.emails_text.splitlines()[:15]
+            parts.append("## Recent email\n" + "\n".join(email_lines))
         return "\n\n".join(parts) if parts else "No open tasks yet."
+
+    async def compose_digest_text(self, user: User, *, chat_id: str) -> str:
+        """Public entry for scheduled daily digest (same as WhatsApp `digest`)."""
+        return await self._digest(user, chat_id=chat_id)
 
     def _next_display_number(self, user_id) -> int:
         current = self._db.scalar(

@@ -1,7 +1,7 @@
 # Breadcrumbs — monsoon
 
-**Last:** Personal ask/reflect + WA full index (all sessions); operator redeployed.
+**Last:** Daily summary job + Gmail re-auth docs; rich digest (tasks/WA/email).
 
-**Now:** Smoke ask/reflect against indexed corpus.
+**Now:** Operator re-runs `gmail_oauth_setup.py`, pastes token, redeploys; smoke `digest`.
 
-**Next:** WorkFlowy per-person + TASK vs CONTEXT depth (not started).
+**Next:** WorkFlowy per-person / depth gate (optional).

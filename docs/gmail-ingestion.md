@@ -14,6 +14,36 @@ entity extract). Background scheduler continues indexing in small batches until 
 **Operator note:** for a complete personal atlas, use empty label (All Mail). Do **not** set
 `INBOX` if you want archived threads.
 
+## Re-auth when token expired (`invalid_grant`)
+
+Gmail pause in logs:
+
+```text
+Gmail sync paused — refresh token expired/revoked.
+Re-run infra/scripts/gmail_oauth_setup.py …
+```
+
+WhatsApp still works. To restore mail indexing:
+
+1. On your **PC** (browser login required — not inside Docker):
+
+```bash
+cd monsoon
+pip install google-auth-oauthlib google-api-python-client
+python infra/scripts/gmail_oauth_setup.py --client-secrets path\to\client_secret.json
+```
+
+2. Copy the new `GMAIL_REFRESH_TOKEN` (and ID/secret if they changed) into Portainer.
+3. Redeploy the `monsoon` stack.
+4. Confirm:
+
+```bash
+curl -s http://127.0.0.1:8080/health/gmail-index | python3 -m json.tool
+curl -s http://127.0.0.1:8080/health/scheduler | python3 -m json.tool
+```
+
+`gmail.status` should move off `auth_error`.
+
 ## 1. Google Cloud setup (one-time)
 
 1. [Google Cloud Console](https://console.cloud.google.com/) → create/select project

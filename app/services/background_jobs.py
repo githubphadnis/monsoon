@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.config import Settings
 from app.db import SessionLocal
 from app.models import SyncState, User
+from app.services.daily_digest import DailyDigestService
 from app.services.ephemeral_cleanup import EphemeralCleanupService
 from app.services.gmail_sync import GmailSyncService
 from app.services.reminder_service import ReminderService
@@ -25,6 +26,7 @@ WA_STATUS_KEY = "scheduler:wa"
 WORKFLOWY_STATUS_KEY = "scheduler:workflowy"
 REMINDER_STATUS_KEY = "scheduler:reminders"
 EPHEMERAL_STATUS_KEY = "scheduler:ephemeral"
+DAILY_DIGEST_STATUS_KEY = "scheduler:daily_digest"
 
 
 def _set_status(key: str, **fields: object) -> None:
@@ -47,6 +49,7 @@ def scheduler_status() -> dict[str, object]:
             WORKFLOWY_STATUS_KEY,
             REMINDER_STATUS_KEY,
             EPHEMERAL_STATUS_KEY,
+            DAILY_DIGEST_STATUS_KEY,
         ):
             row = db.get(SyncState, key)
             result[key.split(":")[1]] = row.value if row and row.value else None
@@ -191,6 +194,38 @@ async def _run_reminders(settings: Settings) -> None:
         _set_status(REMINDER_STATUS_KEY, status="error", error=str(exc))
 
 
+async def _run_daily_digest(settings: Settings) -> None:
+    if not settings.monsoon_daily_digest_enabled:
+        _set_status(DAILY_DIGEST_STATUS_KEY, status="skipped", reason="disabled")
+        return
+    _set_status(DAILY_DIGEST_STATUS_KEY, status="checking")
+    try:
+        with SessionLocal() as db:
+            stats = await DailyDigestService(db, settings).run_if_due()
+        if stats.skipped:
+            _set_status(
+                DAILY_DIGEST_STATUS_KEY,
+                status="idle",
+                skipped=stats.skipped,
+            )
+            return
+        _set_status(
+            DAILY_DIGEST_STATUS_KEY,
+            status="ok" if stats.failed == 0 else "partial",
+            due=stats.due,
+            sent=stats.sent,
+            failed=stats.failed,
+            errors=stats.errors[:10],
+        )
+        if stats.due:
+            logger.info(
+                "Daily digest: sent=%s failed=%s", stats.sent, stats.failed
+            )
+    except Exception as exc:
+        logger.exception("Background daily digest failed")
+        _set_status(DAILY_DIGEST_STATUS_KEY, status="error", error=str(exc)[:500])
+
+
 async def _run_ephemeral(settings: Settings) -> None:
     if settings.monsoon_ephemeral_seconds <= 0:
         _set_status(EPHEMERAL_STATUS_KEY, status="skipped", reason="disabled")
@@ -250,13 +285,17 @@ def start_background_jobs(settings: Settings) -> list[asyncio.Task]:
         return []
 
     logger.info(
-        "Starting background jobs: gmail=%sm/%spages wa=%sm/%schats reminders=%sm ephemeral=%ss",
+        "Starting background jobs: gmail=%sm/%spages wa=%sm/%schats reminders=%sm "
+        "ephemeral=%ss daily_digest=%s@%02d:%02d",
         settings.monsoon_gmail_sync_interval_minutes,
         settings.monsoon_gmail_sync_batch_pages,
         settings.monsoon_wa_sync_interval_minutes,
         settings.monsoon_wa_sync_batch_chats,
         settings.monsoon_reminder_interval_minutes,
         settings.monsoon_ephemeral_seconds,
+        "on" if settings.monsoon_daily_digest_enabled else "off",
+        settings.monsoon_daily_digest_hour,
+        settings.monsoon_daily_digest_minute,
     )
     tasks = [
         asyncio.create_task(
@@ -277,6 +316,13 @@ def start_background_jobs(settings: Settings) -> list[asyncio.Task]:
                 "reminders",
                 settings.monsoon_reminder_interval_minutes,
                 lambda: _run_reminders(settings),
+            )
+        ),
+        asyncio.create_task(
+            _loop_seconds(
+                "daily_digest",
+                60,
+                lambda: _run_daily_digest(settings),
             )
         ),
     ]

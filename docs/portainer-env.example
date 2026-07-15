@@ -61,6 +61,13 @@ MONSOON_WA_SYNC_BATCH_CHATS=5
 MONSOON_WORKFLOWY_SYNC_INTERVAL_MINUTES=20
 MONSOON_REMINDER_INTERVAL_MINUTES=1
 
+# Morning push (*Daily summary*) — APP_TIMEZONE (default Europe/Amsterdam)
+MONSOON_DAILY_DIGEST_ENABLED=true
+MONSOON_DAILY_DIGEST_HOUR=8
+MONSOON_DAILY_DIGEST_MINUTE=0
+# Who gets it (and Gmail in digests). Empty = phones mapped to WAHA_SESSION.
+# MONSOON_DAILY_DIGEST_PHONES=918291882204
+
 # --- Ollama on lenai ---
 # Prefer lenai LAN IP if notcoolio and lenai are on the same subnet (lowest latency).
 # Hostname lenai often fails inside Docker — use IP, not MagicDNS/mDNS name.

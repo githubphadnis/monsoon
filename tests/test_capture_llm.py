@@ -156,29 +156,70 @@ async def test_dispatch_ask_kind():
 
 
 def test_personal_digest_bundle_excludes_email_wa():
-    settings = Settings()
+    """Rashmi (non-recipient) digest: WA on, email off at request layer."""
+    settings = Settings(
+        waha_session="prakalp",
+        monsoon_waha_session_map="31612345678:rashmi",
+        monsoon_daily_digest_phones="918291882204",
+        gmail_client_id="",
+        gmail_client_secret="",
+        gmail_refresh_token="",
+    )
     service = CaptureService(MagicMock(), settings)
     from app.schemas.context import ContextSlice
 
     fake = ContextSlice(
         tasks_text="make a list of books [inbox] ref:T1",
         task_context_text="",
-        emails_text="CAM invoice July",
+        emails_text="",
         wa_messages_text="Finish Griham website",
-        entities_text="phone:9930360555",
+        entities_text="",
         topic=None,
         char_count=40,
     )
     with patch(
         "app.services.capture_service.build_context_slice",
         return_value=fake,
-    ):
+    ) as mock_slice:
         bundle = service._digest_context_bundle(_user(), chat_id=CHAT)
 
     assert "books" in bundle
-    assert "Griham" not in bundle
-    assert "CAM invoice" not in bundle
-    assert "9930360555" not in bundle
+    assert "Griham" in bundle
+    assert "Recent email" not in bundle
+    req = mock_slice.call_args.args[2]
+    assert req.include_wa is True
+    assert req.include_email is False
+
+
+def test_personal_digest_includes_email_for_recipient():
+    settings = Settings(
+        waha_session="prakalp",
+        monsoon_waha_session_map="31612345678:prakalp",
+        monsoon_daily_digest_phones="31612345678",
+        gmail_client_id="x",
+        gmail_client_secret="y",
+        gmail_refresh_token="z",
+    )
+    service = CaptureService(MagicMock(), settings)
+    from app.schemas.context import ContextSlice
+
+    fake = ContextSlice(
+        tasks_text="buy milk [inbox] ref:T1",
+        task_context_text="",
+        emails_text="[Ops] Invoice",
+        wa_messages_text="[self] dashcam sd",
+        entities_text="",
+        topic=None,
+        char_count=20,
+    )
+    with patch(
+        "app.services.capture_service.build_context_slice",
+        return_value=fake,
+    ) as mock_slice:
+        bundle = service._digest_context_bundle(_user(), chat_id=CHAT)
+    assert "## Recent email" in bundle
+    assert "Invoice" in bundle
+    assert mock_slice.call_args.args[2].include_email is True
 
 
 def test_personal_ask_bundle_includes_person_wa():

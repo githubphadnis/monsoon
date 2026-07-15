@@ -39,6 +39,9 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Daily summary push:** `MONSOON_DAILY_DIGEST_*` — once per day after the configured
+  local time, sends `*Daily summary*` (tasks + person WA + Gmail for recipients).
+  On-demand `digest` uses the same rich bundle for those phones.
 - Personal **`ask` / `reflect`** use this person's WAHA-session WhatsApp index
   (`## Your WhatsApp`), topic-filtered, with Message-yourself included; email still
   excluded from personal paths (operator mailbox). Digest stays tasks-only.

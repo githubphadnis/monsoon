@@ -88,6 +88,12 @@ class Settings(BaseSettings):
     # Family roster: alias:phone pairs, e.g. prakalp:918291882204,rashmi:918291882206
     monsoon_user_aliases: str = ""
     gmail_include_spam_trash: bool = False  # set true to also index Spam/Trash
+    # Morning push: rich digest (tasks + person WA + Gmail) to listed phones.
+    monsoon_daily_digest_enabled: bool = True
+    monsoon_daily_digest_hour: int = 8  # APP_TIMEZONE
+    monsoon_daily_digest_minute: int = 0
+    # Comma phones; empty = phones mapped to WAHA_SESSION (primary / you).
+    monsoon_daily_digest_phones: str = ""
 
     @field_validator("gmail_sync_max_pages", mode="before")
     @classmethod
@@ -148,6 +154,39 @@ class Settings(BaseSettings):
     @property
     def gmail_configured(self) -> bool:
         return bool(self.gmail_client_id and self.gmail_client_secret and self.gmail_refresh_token)
+
+    @property
+    def daily_digest_phones_set(self) -> set[str]:
+        return {
+            n.strip().lstrip("+")
+            for n in self.monsoon_daily_digest_phones.split(",")
+            if n.strip()
+        }
+
+    def daily_digest_recipient_phones(self) -> list[str]:
+        """Who receives the scheduled morning summary (and Gmail in personal digests)."""
+        explicit = sorted(self.daily_digest_phones_set)
+        if explicit:
+            return explicit
+        from app.services.waha_routing import phone_session_map
+
+        primary = (self.waha_session or "").strip()
+        mapped = [
+            phone
+            for phone, session in phone_session_map(self).items()
+            if session == primary
+        ]
+        if mapped:
+            return sorted(set(mapped))
+        allowed = sorted(self.allowed_numbers_set)
+        return allowed[:1]
+
+    def digest_includes_email_for(self, phone: str) -> bool:
+        """Gmail is the operator mailbox — only inject into digests for recipient phones."""
+        if not self.gmail_configured:
+            return False
+        digits = (phone or "").lstrip("+").strip()
+        return digits in set(self.daily_digest_recipient_phones())
 
     @property
     def workflowy_configured(self) -> bool:
