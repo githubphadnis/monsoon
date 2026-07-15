@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.integrations.whatsapp.waha_client import WahaClient
 from app.models import OutboundMessage, Task, TaskEvent, User
-from app.services.ephemeral_cleanup import extract_waha_message_id
+from app.services.ephemeral_cleanup import extract_waha_message_id, serialize_waha_message_id
 from app.services.waha_routing import session_for_phone
 
 logger = logging.getLogger("monsoon.reminders")
@@ -81,7 +81,12 @@ class ReminderService:
                 result = await self._waha.send_text(chat_id, body, session=session)
                 outbound.status = "sent"
                 outbound.sent_at = datetime.now(UTC)
-                outbound.provider_message_id = extract_waha_message_id(result)
+                raw_id = extract_waha_message_id(result)
+                outbound.provider_message_id = (
+                    serialize_waha_message_id(chat_id, raw_id, from_me=True)
+                    if raw_id
+                    else None
+                )
                 task.remind_at = None
                 self._db.add(
                     TaskEvent(

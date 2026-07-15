@@ -52,6 +52,10 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Ephemeral delete: serialize bare WAHA message hashes to `true_<chatJid>_<hash>` (fixes 500 parseMessageIdSerialized).
+- Multi-session: group webhooks only processed by the **primary** WAHA session (stops double capture from Rashmi/Prathamesh fans).
+- Gmail `invalid_grant`: raise clean auth pause without ERROR traceback spam; WhatsApp still works.
+- Quiet WhatsApp acks no longer show `#N` on Saved/Done/Deleted (numbers remain on `list`).
 - Gmail sync: dedupe `email_participants` already pending in the current DB flush.
 - WhatsApp background backfill remembers chat-list cursor so small batches progress across chats.
 - WA backfill: duplicate `wa_contacts` for `status@broadcast` — contact cache + preload + skip self JID.

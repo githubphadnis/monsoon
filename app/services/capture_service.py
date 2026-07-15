@@ -17,7 +17,7 @@ from app.models import InboundMessage, OutboundMessage, Task, TaskEvent, User
 from app.schemas.capture import ParsedCapture
 from app.schemas.context import ContextSliceRequest
 from app.services.context_slice import build_context_slice
-from app.services.ephemeral_cleanup import extract_waha_message_id
+from app.services.ephemeral_cleanup import extract_waha_message_id, serialize_waha_message_id
 from app.services.parser import parse_capture
 from app.services.users import display_label_for, get_or_create_user, resolve_user_by_alias
 from app.services.workflowy_mirror import WorkFlowyMirrorService
@@ -601,7 +601,12 @@ class CaptureService:
             )
             outbound.status = "sent"
             outbound.sent_at = datetime.now(ZoneInfo("UTC"))
-            outbound.provider_message_id = extract_waha_message_id(result)
+            raw_id = extract_waha_message_id(result)
+            outbound.provider_message_id = (
+                serialize_waha_message_id(chat_id, raw_id, from_me=True)
+                if raw_id
+                else None
+            )
             self._db.commit()
         except Exception as exc:
             outbound.status = "error"

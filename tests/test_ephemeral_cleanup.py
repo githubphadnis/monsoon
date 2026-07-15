@@ -7,7 +7,11 @@ import pytest
 
 from app.config import Settings
 from app.models import InboundMessage, OutboundMessage
-from app.services.ephemeral_cleanup import EphemeralCleanupService, extract_waha_message_id
+from app.services.ephemeral_cleanup import (
+    EphemeralCleanupService,
+    extract_waha_message_id,
+    serialize_waha_message_id,
+)
 
 
 def test_extract_waha_message_id_string():
@@ -19,6 +23,49 @@ def test_extract_waha_message_id_nested():
         extract_waha_message_id({"id": {"_serialized": "true_1@c.us_BBB"}})
         == "true_1@c.us_BBB"
     )
+
+
+def test_serialize_bare_hash_for_delete():
+    assert (
+        serialize_waha_message_id(
+            "120363427281353392@g.us", "3EB03BF95638667DBCDE3A", from_me=True
+        )
+        == "true_120363427281353392@g.us_3EB03BF95638667DBCDE3A"
+    )
+    assert (
+        serialize_waha_message_id(
+            "918291884406@c.us", "false_918291884406@c.us_CMD", from_me=False
+        )
+        == "false_918291884406@c.us_CMD"
+    )
+
+
+@pytest.mark.asyncio
+async def test_ephemeral_serializes_bare_outbound_id():
+    settings = Settings(monsoon_ephemeral_seconds=60, monsoon_ephemeral_delete_commands=False)
+    db = MagicMock()
+    old = OutboundMessage(
+        channel="whatsapp",
+        recipient="120363427281353392@g.us",
+        message_body="Saved · milk",
+        status="sent",
+        provider_message_id="3EB03BF95638667DBCDE3A",
+        sent_at=datetime.now(UTC) - timedelta(minutes=5),
+        waha_session="prakalp",
+    )
+    db.scalars.return_value = [old]
+    waha = MagicMock()
+    waha.delete_message = AsyncMock()
+
+    stats = await EphemeralCleanupService(db, settings, waha=waha).run()
+
+    waha.delete_message.assert_awaited_once_with(
+        "120363427281353392@g.us",
+        "true_120363427281353392@g.us_3EB03BF95638667DBCDE3A",
+        session="prakalp",
+    )
+    assert old.status == "deleted"
+    assert stats.outbound_deleted == 1
 
 
 @pytest.mark.asyncio
@@ -40,7 +87,9 @@ async def test_ephemeral_deletes_old_outbound():
     stats = await EphemeralCleanupService(db, settings, waha=waha).run()
 
     waha.delete_message.assert_awaited_once_with(
-        "918291884406@c.us", "true_918291884406@c.us_XYZ", session="default"
+        "918291884406@c.us",
+        "true_918291884406@c.us_XYZ",
+        session="default",
     )
     assert old.status == "deleted"
     assert stats.outbound_deleted == 1

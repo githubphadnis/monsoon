@@ -17,6 +17,7 @@ from app.services.sender_identity import (
     resolve_group_participant_key,
     resolve_sender_phone,
 )
+from app.services.waha_routing import webhook_session_owns_chat
 
 logger = logging.getLogger("monsoon.api.webhooks")
 
@@ -116,6 +117,19 @@ async def waha_webhook(
             sorted(settings.allowed_chat_ids_set) or ["<empty-deny-all>"],
         )
         return {"status": "ignored", "reason": "chat_not_allowed"}
+
+    # Multi-session: only the chat's authoritative WAHA session processes.
+    # Group messages fan out to every member session otherwise.
+    if not webhook_session_owns_chat(
+        settings, session=event.session, chat_id=chat_id
+    ):
+        logger.info(
+            "Ignored non-authoritative session webhook session=%s chat_id=%s "
+            "(group/1:1 owned by another WAHA session)",
+            event.session,
+            chat_id,
+        )
+        return {"status": "ignored", "reason": "wrong_session"}
 
     phone = resolve_sender_phone(
         from_id=sender,

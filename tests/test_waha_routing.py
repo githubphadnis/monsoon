@@ -7,6 +7,7 @@ from app.services.waha_routing import (
     resolve_reply_session,
     session_for_chat_id,
     session_for_phone,
+    webhook_session_owns_chat,
 )
 
 
@@ -27,7 +28,34 @@ def test_group_chat_uses_primary_session():
     assert session_for_chat_id(s, "120363143633935585@g.us") == "prakalp"
 
 
-def test_resolve_reply_prefers_inbound_session():
+def test_webhook_session_owns_group_primary_only():
+    s = Settings(
+        waha_session="prakalp",
+        monsoon_waha_session_map="918291882206:Rashmi,46704098198:Prathamesh",
+    )
+    gid = "120363426840058222@g.us"
+    assert webhook_session_owns_chat(s, session="prakalp", chat_id=gid)
+    assert not webhook_session_owns_chat(s, session="Rashmi", chat_id=gid)
+    assert not webhook_session_owns_chat(s, session="Prathamesh", chat_id=gid)
+
+
+def test_resolve_reply_maps_phone_for_dm():
+    s = Settings(
+        waha_session="prakalp",
+        monsoon_waha_session_map="918291882206:rashmi",
+    )
+    assert (
+        resolve_reply_session(
+            s,
+            inbound_session="prakalp",
+            chat_id="918291882206@c.us",
+            sender_phone="918291882206",
+        )
+        == "rashmi"
+    )
+
+
+def test_resolve_reply_group_always_primary():
     s = Settings(
         waha_session="prakalp",
         monsoon_waha_session_map="918291882206:rashmi",
@@ -36,10 +64,10 @@ def test_resolve_reply_prefers_inbound_session():
         resolve_reply_session(
             s,
             inbound_session="rashmi",
-            chat_id="918291882206@c.us",
+            chat_id="120363143633935585@g.us",
             sender_phone="918291882206",
         )
-        == "rashmi"
+        == "prakalp"
     )
 
 

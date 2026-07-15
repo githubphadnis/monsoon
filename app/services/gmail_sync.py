@@ -27,6 +27,15 @@ HISTORY_KEY = "gmail:history_id"
 PAGE_TOKEN_KEY = "gmail:list_page_token"
 
 
+class GmailAuthError(Exception):
+    """Refresh token expired/revoked — sync should pause until re-auth."""
+
+
+def _is_gmail_auth_error(exc: BaseException) -> bool:
+    err = str(exc)
+    return "invalid_grant" in err or "Token has been expired or revoked" in err
+
+
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
@@ -66,9 +75,14 @@ class GmailSyncService:
 
         # Only advance history cursor when the mailbox list pass is finished.
         if not self._get_sync_value(PAGE_TOKEN_KEY):
-            profile = self._service.users().getProfile(
-                userId=self._settings.gmail_user_id
-            ).execute()
+            try:
+                profile = self._service.users().getProfile(
+                    userId=self._settings.gmail_user_id
+                ).execute()
+            except Exception as exc:
+                if _is_gmail_auth_error(exc):
+                    raise GmailAuthError(str(exc)) from exc
+                raise
             history_id = profile.get("historyId")
             if history_id:
                 self._set_sync_value(HISTORY_KEY, str(history_id))
@@ -101,6 +115,8 @@ class GmailSyncService:
             try:
                 result = self._service.users().messages().list(**params).execute()
             except Exception as exc:
+                if _is_gmail_auth_error(exc):
+                    raise GmailAuthError(str(exc)) from exc
                 stats.errors.append(f"messages.list: {exc}")
                 logger.exception("Gmail list failed")
                 break
@@ -134,6 +150,8 @@ class GmailSyncService:
             try:
                 result = self._service.users().history().list(**params).execute()
             except Exception as exc:
+                if _is_gmail_auth_error(exc):
+                    raise GmailAuthError(str(exc)) from exc
                 if "404" in str(exc) or "historyId" in str(exc).lower():
                     logger.warning("Gmail history expired — falling back to list sync")
                     self._set_sync_value(HISTORY_KEY, None)

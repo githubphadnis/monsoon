@@ -31,6 +31,45 @@ def extract_waha_message_id(result: dict | None) -> str | None:
     return text or None
 
 
+def is_serialized_waha_message_id(message_id: str) -> bool:
+    """True when id already looks like WAHA NoWeb `true|false_chatJid_hash`."""
+    mid = (message_id or "").strip()
+    if not mid:
+        return False
+    lower = mid.lower()
+    if not (lower.startswith("true_") or lower.startswith("false_")):
+        return False
+    return "@" in mid and mid.count("_") >= 2
+
+
+def serialize_waha_message_id(
+    chat_id: str,
+    message_id: str,
+    *,
+    from_me: bool = True,
+) -> str:
+    """Build the id WAHA deleteMessage expects.
+
+    NoWeb parseMessageIdSerialized requires:
+    `true|false_<chatJid>_<hash>[_participant]`
+    SendText sometimes returns only the bare hash (e.g. `3EB0…`).
+    """
+    mid = (message_id or "").strip()
+    if not mid:
+        return mid
+    if is_serialized_waha_message_id(mid):
+        return mid
+    # Already has chat jid embedded but missing true/false prefix
+    cid = (chat_id or "").strip()
+    if cid and mid.startswith(f"{cid}_"):
+        prefix = "true" if from_me else "false"
+        return f"{prefix}_{mid}"
+    if not cid:
+        return mid
+    prefix = "true" if from_me else "false"
+    return f"{prefix}_{cid}_{mid}"
+
+
 @dataclass
 class EphemeralStats:
     outbound_due: int = 0
@@ -90,8 +129,12 @@ class EphemeralCleanupService:
                 session = row.waha_session or session_for_chat_id(
                     self._settings, row.recipient
                 )
+                # Outbound = fromMe → true_chat_hash
+                delete_id = serialize_waha_message_id(
+                    row.recipient, msg_id, from_me=True
+                )
                 await self._waha.delete_message(
-                    row.recipient, msg_id, session=session
+                    row.recipient, delete_id, session=session
                 )
                 row.status = "deleted"
                 stats.outbound_deleted += 1
@@ -138,7 +181,13 @@ class EphemeralCleanupService:
                 inbound_session = raw.get("session")
                 if isinstance(inbound_session, str) and inbound_session.strip():
                     session = inbound_session.strip()
-                await self._waha.delete_message(row.chat_id, msg_id, session=session)
+                # Inbound commands are not fromMe on the monsoon device
+                delete_id = serialize_waha_message_id(
+                    row.chat_id, msg_id, from_me=False
+                )
+                await self._waha.delete_message(
+                    row.chat_id, delete_id, session=session
+                )
                 row.status = "deleted"
                 stats.inbound_deleted += 1
             except Exception as exc:

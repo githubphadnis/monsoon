@@ -64,6 +64,26 @@ def session_for_chat_id(settings: Settings, chat_id: str) -> str:
     return session_for_phone(settings, phone)
 
 
+def webhook_session_owns_chat(
+    settings: Settings,
+    *,
+    session: str | None,
+    chat_id: str,
+) -> bool:
+    """True when this WAHA session should process the webhook for chat_id.
+
+    Multi-session households get the *same* group message on every member
+    session. Only the authoritative session (primary for groups; mapped phone
+    for 1:1) should capture — otherwise we double-reply and race on different
+    provider message ids.
+    """
+    name = (session or "").strip()
+    if not name:
+        return True
+    expected = session_for_chat_id(settings, chat_id)
+    return name == expected.strip()
+
+
 def resolve_reply_session(
     settings: Settings,
     *,
@@ -71,9 +91,16 @@ def resolve_reply_session(
     chat_id: str,
     sender_phone: str | None = None,
 ) -> str:
-    """Prefer the WAHA session that delivered the webhook; else map phone/chat."""
-    if inbound_session and inbound_session.strip():
-        return inbound_session.strip()
+    """Pick the WAHA session that should send the reply.
+
+    Groups always use the primary session. 1:1 prefers the phone map
+    (Message yourself), then the inbound webhook session as a last resort.
+    """
+    cid = (chat_id or "").strip()
+    if cid.endswith("@g.us"):
+        return settings.waha_session
     if sender_phone:
         return session_for_phone(settings, sender_phone)
+    if inbound_session and inbound_session.strip():
+        return inbound_session.strip()
     return session_for_chat_id(settings, chat_id)
