@@ -13,6 +13,43 @@ from app.models import EmailMessage, ExtractedEntity, Task, TaskContextItem, WaC
 from app.schemas.context import ContextSlice, ContextSliceRequest
 
 
+_TOPIC_STOPWORDS = frozenset(
+    {
+        "about",
+        "what",
+        "when",
+        "where",
+        "which",
+        "with",
+        "from",
+        "that",
+        "this",
+        "have",
+        "been",
+        "will",
+        "your",
+        "please",
+        "tell",
+        "know",
+        "there",
+        "their",
+        "them",
+        "then",
+        "than",
+        "into",
+        "just",
+        "like",
+        "some",
+        "more",
+        "also",
+        "does",
+        "dont",
+        "didn't",
+        "reflect",
+    }
+)
+
+
 def topic_match_tokens(topic: str | None) -> list[str]:
     """Meaningful tokens for topic filters (full phrase first, then words ≥4 chars)."""
     raw = (topic or "").strip().lower()
@@ -20,8 +57,18 @@ def topic_match_tokens(topic: str | None) -> list[str]:
         return []
     tokens = [raw]
     for word in re.findall(r"[a-z0-9]{4,}", raw):
-        if word not in tokens:
-            tokens.append(word)
+        if word in _TOPIC_STOPWORDS or word in tokens:
+            continue
+        tokens.append(word)
+    # If only the raw phrase remains and it is stopword soup, keep word tokens only
+    if len(tokens) == 1 and " " in raw:
+        words = [
+            w
+            for w in re.findall(r"[a-z0-9]{4,}", raw)
+            if w not in _TOPIC_STOPWORDS
+        ]
+        if words:
+            return words
     return tokens
 
 
@@ -41,8 +88,20 @@ def build_context_slice(
     tasks = _fetch_open_tasks(db, request.user_id, topic=request.topic)
     task_lines = [_format_task_line(task, tz) for task in tasks]
     task_context_lines = _fetch_task_context_lines(db, tasks, request.topic)
-    email_lines, email_ids = _fetch_email_lines(db, request.topic)
-    wa_lines, wa_message_ids = _fetch_wa_lines(db, settings, request.topic)
+    email_lines: list[str] = []
+    email_ids: list[str] = []
+    if request.include_email:
+        email_lines, email_ids = _fetch_email_lines(db, request.topic)
+    wa_lines: list[str] = []
+    wa_message_ids: list[str] = []
+    if request.include_wa:
+        wa_lines, wa_message_ids = _fetch_wa_lines(
+            db,
+            settings,
+            request.topic,
+            session=request.waha_session,
+            include_from_me=request.include_from_me,
+        )
     entity_lines = _fetch_entity_lines(
         db, wa_message_ids, email_ids, request.topic
     )
@@ -182,11 +241,19 @@ def _format_email_line(msg: EmailMessage) -> str:
 
 
 def _fetch_wa_lines(
-    db: Session, settings: Settings, topic: str | None
+    db: Session,
+    settings: Settings,
+    topic: str | None,
+    *,
+    session: str | None = None,
+    include_from_me: bool = False,
+    limit: int = 20,
 ) -> tuple[list[str], list[str]]:
-    session = settings.waha_session
+    session_name = (session or settings.waha_session).strip() or settings.waha_session
     has_messages = db.scalar(
-        select(func.count()).select_from(WaMessage).where(WaMessage.session == session)
+        select(func.count())
+        .select_from(WaMessage)
+        .where(WaMessage.session == session_name)
     )
     if not has_messages:
         return [], []
@@ -194,22 +261,26 @@ def _fetch_wa_lines(
     stmt = (
         select(WaMessage, WaChat.name)
         .join(WaChat, WaMessage.chat_uuid == WaChat.id)
-        .where(
-            WaMessage.session == session,
-            or_(WaMessage.from_me.is_(False), WaMessage.from_me.is_(None)),
-        )
+        .where(WaMessage.session == session_name)
     )
-    if topic:
-        pattern = f"%{topic}%"
+    if not include_from_me:
         stmt = stmt.where(
-            or_(
-                WaMessage.body.ilike(pattern),
-                WaChat.name.ilike(pattern),
-            )
+            or_(WaMessage.from_me.is_(False), WaMessage.from_me.is_(None))
         )
 
+    tokens = topic_match_tokens(topic)
+    if tokens:
+        conditions = []
+        for tok in tokens:
+            pattern = f"%{tok}%"
+            conditions.append(WaMessage.body.ilike(pattern))
+            conditions.append(WaChat.name.ilike(pattern))
+        stmt = stmt.where(or_(*conditions))
+
     rows = db.execute(
-        stmt.order_by(WaMessage.message_ts.desc().nullslast(), WaMessage.indexed_at.desc()).limit(40)
+        stmt.order_by(
+            WaMessage.message_ts.desc().nullslast(), WaMessage.indexed_at.desc()
+        ).limit(max(40, limit * 2))
     ).all()
 
     lines: list[str] = []
@@ -220,7 +291,7 @@ def _fetch_wa_lines(
             continue
         message_ids.append(msg.waha_message_id)
         lines.append(_format_wa_line(msg, chat_name))
-        if len(lines) >= 20:
+        if len(lines) >= limit:
             break
     return lines, message_ids
 

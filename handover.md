@@ -2,26 +2,25 @@
 
 ## Last worked on
 
-2026-07-12 — MS-09 multi-session WAHA routing.
+2026-07-15 — Personal ask/reflect use person-scoped WhatsApp corpus.
 
 ## Current state / WIP
 
-- **Multi-session:** `MONSOON_WAHA_SESSION_MAP` + optional `MONSOON_WAHA_ENDPOINTS`.
-  Replies use inbound webhook session; reminders/ephemeral/backfill follow the map.
-- **Family:** `docs/family-model.md`
-- **Assign / delete / ephemeral / Ollama Auto** shipped.
+- WA backfill catch-up (prakalp done; Rashmi/Prathamesh operator-run).
+- Personal `ask` / `reflect` pull `## Your WhatsApp` from that user's WAHA session
+  (topic-filtered; Message yourself included). Digests remain tasks-only.
 
 ## Operator priorities
 
-1. Redeploy; create WAHA sessions + QR Rashmi/Prathamesh phones.
-2. Set `MONSOON_WAHA_SESSION_MAP` (and aliases / shared group).
-3. Smoke Message yourself per person + family `@assign`.
+1. Finish `--full --session Rashmi` / `Prathamesh`; redeploy for ask wiring + progress UI.
+2. Smoke: free-text ask about something already in indexed WA.
+3. Optional next: WorkFlowy per-person roots.
 
 ## Next product work
 
-- MS-10 assign notify + shared done ([#9](https://github.com/githubphadnis/monsoon/issues/9))
-- Group RAG / lunch memory
-- MS-08 snooze
+- WorkFlowy per-person separation
+- MS-10 assign notify ([#9](https://github.com/githubphadnis/monsoon/issues/9))
+- Gmail re-auth when email digests wanted again
 
 ## Environment
 

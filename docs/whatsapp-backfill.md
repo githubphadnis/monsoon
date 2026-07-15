@@ -95,7 +95,9 @@ Multi-session: each phone’s session builds **its own** `session=` corpus. Fami
 
 ### LLM query caveat
 
-Personal `ask` / `reflect` today lean on **tasks**, not the full WA index (privacy isolation). Filling the corpus is necessary but not sufficient for “ask me what X said” — that needs person-scoped WA in the ask path (next unlock).
+Personal `ask` / `reflect` use **this person's WAHA session** index (topic-filtered)
+plus their tasks — not other family members' Message yourself / Gmail. Redeploy to
+pick up that wiring after indexing.
 
 Also: `curl -s http://127.0.0.1:8080/health/scheduler | python3 -m json.tool`
 

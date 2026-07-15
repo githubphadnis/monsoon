@@ -441,3 +441,58 @@ def test_email_entities_included_with_topic(db: Session, settings: Settings, use
     assert "griham deploy tonight" in result.emails_text
     assert "https://griham.dev" in result.entities_text
     assert "https://other.example" not in result.entities_text
+
+
+def test_wa_session_scope_excludes_other_sessions(
+    db: Session, settings: Settings, user: User
+):
+    mine = WaChat(session="rashmi", chat_id="a@c.us", name="Self")
+    other = WaChat(session="prakalp", chat_id="b@c.us", name="Dad")
+    db.add_all([mine, other])
+    db.flush()
+    db.add(
+        WaMessage(
+            session="rashmi",
+            chat_uuid=mine.id,
+            chat_id=mine.chat_id,
+            waha_message_id="r1",
+            body="dentist appointment dashcam unrelated wait dentist",
+            from_me=True,
+            message_ts=datetime(2025, 7, 1, 10, 0, tzinfo=UTC),
+        )
+    )
+    db.add(
+        WaMessage(
+            session="prakalp",
+            chat_uuid=other.id,
+            chat_id=other.chat_id,
+            waha_message_id="p1",
+            body="dentist for rashmi secret",
+            from_me=False,
+            message_ts=datetime(2025, 7, 1, 11, 0, tzinfo=UTC),
+        )
+    )
+    db.commit()
+
+    result = build_context_slice(
+        db,
+        settings,
+        ContextSliceRequest(
+            user_id=user.id,
+            topic="dentist",
+            waha_session="rashmi",
+            include_email=False,
+            include_from_me=True,
+        ),
+    )
+    assert "appointment" in result.wa_messages_text
+    assert "secret" not in result.wa_messages_text
+
+
+def test_topic_tokens_drop_ask_stopwords():
+    from app.services.context_slice import topic_match_tokens
+
+    tokens = topic_match_tokens("what about the dashcam please?")
+    assert "dashcam" in tokens
+    assert "about" not in tokens
+    assert "what" not in tokens

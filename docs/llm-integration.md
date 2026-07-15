@@ -64,9 +64,11 @@ Used by `digest` and `reflect` before every Ollama call.
 
 ### Context awareness (status)
 
-**Now:** digest / reflect / ask all share the Postgres context slice (open tasks, task notes, recent email + WA). Entity lists are stored but **not** fed into LLM prompts (they caused phone/email dumps). Bot outbound is filtered out of WA lines.
+**Now:** personal `ask` / `reflect` use open tasks + **person-scoped WhatsApp**
+(from that user's WAHA session index, topic-filtered). Digests stay tasks-first
+(no global email/WA leak). Entity lists are stored but **not** fed into LLM prompts.
 
-**Later:** auto-link free text to an active task (MS-06/07), morning outbound digest, optional ephemeral delete of bot messages.
+**Later:** auto-link free text to an active task (MS-06/07), morning outbound digest.
 
 ### Deferred UX ideas
 

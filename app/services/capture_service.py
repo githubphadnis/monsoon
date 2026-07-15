@@ -36,8 +36,8 @@ done / complete <id>      mark complete
 delete / remove <id>      remove task
 list / show today         open tasks
 digest / summary          action digest
-reflect <topic>           what's active on a topic
-ask anything              free-text questions
+reflect <topic>           what's active (tasks + your WA)
+ask / free text           questions using your tasks + WhatsApp
 help / ?                  this message
 
 Personal chats = your list. Family group = everyone's.
@@ -312,19 +312,32 @@ class CaptureService:
                 )
             return "\n\n".join(parts) if parts else "No shared context in this group yet."
 
-        # Personal — tasks only (prevents dad's atlas leaking into son's digest/ask)
+        # Personal — own tasks + this person's WAHA session corpus (no family/email leak)
+        from app.services.waha_routing import session_for_phone
+
+        person_session = session_for_phone(self._settings, user.phone_number)
         slice_ = build_context_slice(
             self._db,
             self._settings,
-            ContextSliceRequest(user_id=user.id, topic=topic, max_chars=6000),
+            ContextSliceRequest(
+                user_id=user.id,
+                topic=topic,
+                max_chars=6000,
+                waha_session=person_session,
+                include_wa=True,
+                include_email=False,
+                include_from_me=True,
+            ),
         )
         parts = []
         if slice_.tasks_text:
             parts.append(f"## Tasks\n{slice_.tasks_text}")
         if slice_.task_context_text:
             parts.append(f"## Task Context\n{slice_.task_context_text}")
+        if slice_.wa_messages_text:
+            parts.append(f"## Your WhatsApp\n{slice_.wa_messages_text}")
         if topic and not parts:
-            return f"No open tasks matching `{topic}`."
+            return f"No open tasks or WhatsApp messages matching `{topic}`."
         return "\n\n".join(parts) if parts else "No open tasks yet."
 
     def _digest_context_bundle(self, user: User, *, chat_id: str) -> str:
@@ -335,7 +348,13 @@ class CaptureService:
         slice_ = build_context_slice(
             self._db,
             self._settings,
-            ContextSliceRequest(user_id=user.id, topic=None, max_chars=4000),
+            ContextSliceRequest(
+                user_id=user.id,
+                topic=None,
+                max_chars=4000,
+                include_wa=False,
+                include_email=False,
+            ),
         )
         parts: list[str] = []
         if slice_.tasks_text:
@@ -585,7 +604,7 @@ class CaptureService:
         q = (question or "").strip()
         if not q:
             return "Ask me anything about your tasks or context — or send `help`."
-        context_text = self._context_bundle(user, chat_id=chat_id)
+        context_text = self._context_bundle(user, topic=q, chat_id=chat_id)
         llm_text = await self._ollama.generate_ask(
             question=q,
             context_text=context_text,

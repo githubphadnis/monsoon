@@ -37,6 +37,12 @@ versioning follows [Semantic Versioning](https://semver.org/).
 - `/health/gmail-index` reports sync cursor metadata when present.
 - `/health/scheduler` reports background Gmail / WA / WorkFlowy / reminder loop state.
 
+### Added
+
+- Personal **`ask` / `reflect`** use this person's WAHA-session WhatsApp index
+  (`## Your WhatsApp`), topic-filtered, with Message-yourself included; email still
+  excluded from personal paths (operator mailbox). Digest stays tasks-only.
+
 ### Changed
 
 - `wa_backfill.py` live progress (bar / spinner / per-chat lines) + `--quiet`; commits after each chat.

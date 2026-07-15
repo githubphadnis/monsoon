@@ -181,6 +181,59 @@ def test_personal_digest_bundle_excludes_email_wa():
     assert "9930360555" not in bundle
 
 
+def test_personal_ask_bundle_includes_person_wa():
+    """ask/reflect personal path includes ## Your WhatsApp from context slice."""
+    settings = Settings(
+        waha_session="prakalp",
+        monsoon_waha_session_map="31612345678:prakalp",
+    )
+    service = CaptureService(MagicMock(), settings)
+    from app.schemas.context import ContextSlice
+
+    fake = ContextSlice(
+        tasks_text="buy SD card for dashcam [today] ref:T2",
+        task_context_text="",
+        emails_text="should not appear",
+        wa_messages_text="[self] 2025-06-01 need microSD for dashcam",
+        entities_text="",
+        topic="dashcam",
+        char_count=80,
+    )
+    with patch(
+        "app.services.capture_service.build_context_slice",
+        return_value=fake,
+    ) as mock_slice:
+        bundle = service._context_bundle(_user(), topic="dashcam", chat_id=CHAT)
+
+    assert "## Tasks" in bundle
+    assert "dashcam" in bundle
+    assert "## Your WhatsApp" in bundle
+    assert "microSD" in bundle
+    assert "should not appear" not in bundle
+    req = mock_slice.call_args.args[2]
+    assert req.include_wa is True
+    assert req.include_email is False
+    assert req.include_from_me is True
+    assert req.waha_session == "prakalp"
+
+
+@pytest.mark.asyncio
+async def test_ask_passes_question_as_topic():
+    settings = Settings()
+    service = CaptureService(MagicMock(), settings)
+    with (
+        patch.object(service, "_context_bundle", return_value="## Your WhatsApp\n…") as mock_ctx,
+        patch.object(
+            service._ollama,
+            "generate_ask",
+            new=AsyncMock(return_value="SD card still open."),
+        ),
+    ):
+        await service._ask(_user(), "any update on dashcam?", chat_id=CHAT)
+    mock_ctx.assert_called_once()
+    assert mock_ctx.call_args.kwargs.get("topic") == "any update on dashcam?"
+
+
 def test_list_skips_url_only_titles():
     settings = Settings(app_timezone="Europe/Amsterdam")
     db = MagicMock()

@@ -9,6 +9,12 @@ class ContextSliceRequest(BaseModel):
     user_id: UUID
     topic: str | None = None
     max_chars: int = 12000
+    # When set, only index WA for this WAHA session (person-scoped; no atlas leak).
+    waha_session: str | None = None
+    include_wa: bool = True
+    include_email: bool = True
+    # Personal ask/reflect: include from_me (Message yourself) but still drop bot acks.
+    include_from_me: bool = False
 
 
 class ContextSlice(BaseModel):
