@@ -120,13 +120,6 @@ async def test_generate_digest_rejects_entity_dump():
         "I'll reach out tomorrow morning to 催促他尽快提供所需的信息。"
     )
 
-
-def test_contains_cjk():
-    from app.integrations.ollama.client import contains_cjk
-
-    assert contains_cjk("催促他尽快提供所需的信息")
-    assert not contains_cjk("Urge Kailash for the API key tomorrow.")
-
     settings = Settings(monsoon_soul_prompt="Soul prompt for monsoon")
     client = OllamaClient(settings)
     dump = (
@@ -146,6 +139,13 @@ def test_contains_cjk():
         )
 
     assert result is None
+
+
+def test_contains_cjk():
+    from app.integrations.ollama.client import contains_cjk
+
+    assert contains_cjk("催促他尽快提供所需的信息")
+    assert not contains_cjk("Urge Kailash for the API key tomorrow.")
 
 
 @pytest.mark.asyncio
