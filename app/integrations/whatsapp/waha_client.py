@@ -124,11 +124,19 @@ class WahaClient:
                 params=params,
             )
             if response.is_error:
-                logger.error(
+                # Missing secondary sessions are expected until dashboard pair.
+                body_preview = response.text[:500]
+                log = (
+                    logger.info
+                    if response.status_code in {404, 422}
+                    and "does not exist" in body_preview
+                    else logger.error
+                )
+                log(
                     "WAHA list_chats failed status=%s url=%s body=%s",
                     response.status_code,
                     response.url,
-                    response.text[:500],
+                    body_preview,
                 )
             response.raise_for_status()
             data = response.json()

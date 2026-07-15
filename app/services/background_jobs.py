@@ -83,8 +83,17 @@ async def _run_gmail_batch(settings: Settings) -> None:
             stats.get("messages_skipped"),
         )
     except Exception as exc:
+        err = str(exc)
+        if "invalid_grant" in err or "Token has been expired or revoked" in err:
+            logger.warning(
+                "Gmail sync paused — refresh token expired/revoked. "
+                "Re-run infra/scripts/gmail_oauth_setup.py and update "
+                "GMAIL_REFRESH_TOKEN in Portainer. WhatsApp capture still works."
+            )
+            _set_status(GMAIL_STATUS_KEY, status="auth_error", error=err[:300])
+            return
         logger.exception("Background Gmail sync failed")
-        _set_status(GMAIL_STATUS_KEY, status="error", error=str(exc))
+        _set_status(GMAIL_STATUS_KEY, status="error", error=err[:500])
 
 
 async def _run_wa_batch(settings: Settings) -> None:

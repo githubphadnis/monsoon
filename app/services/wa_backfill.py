@@ -7,6 +7,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -73,6 +74,20 @@ class WaBackfillService:
                 chats = await self._waha.list_chats(
                     limit=page_size, offset=offset, session=self._session
                 )
+            except httpx.HTTPStatusError as exc:
+                # Secondary mapped sessions not created in WAHA yet — skip quietly.
+                if exc.response is not None and exc.response.status_code in {404, 422}:
+                    logger.info(
+                        "WAHA session %r not ready for backfill (%s) — skipping",
+                        self._session,
+                        exc.response.status_code,
+                    )
+                    stats.errors.append(f"session_not_ready:{self._session}")
+                    self._db.commit()
+                    return stats
+                stats.errors.append(f"list_chats offset={offset}: {exc}")
+                logger.exception("list_chats failed")
+                break
             except Exception as exc:
                 stats.errors.append(f"list_chats offset={offset}: {exc}")
                 logger.exception("list_chats failed")
