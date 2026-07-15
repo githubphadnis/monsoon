@@ -94,10 +94,7 @@ Multi-session: each phone’s session builds **its own** `session=` corpus. Fami
 
 Personal `ask` / `reflect` today lean on **tasks**, not the full WA index (privacy isolation). Filling the corpus is necessary but not sufficient for “ask me what X said” — that needs person-scoped WA in the ask path (next unlock).
 
-```bash
-curl -s http://127.0.0.1:8080/health/wa-index | python3 -m json.tool
-curl -s http://127.0.0.1:8080/health/scheduler | python3 -m json.tool
-```
+Also: `curl -s http://127.0.0.1:8080/health/scheduler | python3 -m json.tool`
 
 ## WAHA API
 
