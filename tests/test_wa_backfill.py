@@ -1,9 +1,12 @@
 """Tests for WA backfill contact deduplication."""
 
+import asyncio
 from unittest.mock import MagicMock
 
+import pytest
+
 from app.config import Settings
-from app.services.wa_backfill import BackfillStats, WaBackfillService
+from app.services.wa_backfill import BackfillStats, ProgressEvent, WaBackfillService
 
 
 def test_upsert_contact_dedupes_pending_same_jid():
@@ -64,3 +67,26 @@ def test_index_message_skips_contact_when_from_id_is_chat_id():
         args = call[0]
         if args and hasattr(args[0], "jid"):
             pytest.fail("should not add WaContact when from_id equals chat_id")
+
+
+@pytest.mark.asyncio
+async def test_progress_callback_receives_start_event():
+    events: list[ProgressEvent] = []
+    db = MagicMock()
+    db.scalars.return_value = []
+    db.get.return_value = None
+
+    async def _boom(*_a, **_k):
+        raise ConnectionError("offline")
+
+    service = WaBackfillService(
+        db,
+        Settings(waha_session="prakalp"),
+        on_progress=events.append,
+    )
+    service._waha.list_chats = _boom  # type: ignore[method-assign]
+
+    stats = await service.run(full=True, max_chats=1)
+    assert events and events[0].phase == "start"
+    assert events[0].session == "prakalp"
+    assert stats.errors

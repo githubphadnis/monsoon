@@ -39,6 +39,7 @@ versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- `wa_backfill.py` live progress (bar / spinner / per-chat lines) + `--quiet`; commits after each chat.
 - `wa_backfill.py --session <name>` for per-person one-shot catch-up; docs for fast fill + size notes.
 - Digest/reflect prompts: connected prose (not staccato bullets); ban entity inventories and category fluff.
 - Digest context is **tasks-first** with capped email/WA signals; reject support-desk / inbox-topic dumps and replies that ignore open tasks.

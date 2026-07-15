@@ -66,6 +66,9 @@ docker exec monsoon-app python infra/scripts/wa_backfill.py --full --session Pra
 docker exec monsoon-app python infra/scripts/wa_backfill.py --chat-id 918291882204@c.us --session prakalp
 ```
 
+Progress prints to stderr while the run is live (chat name, message offset, +msgs,
+elapsed). JSON summary prints on stdout when finished. Use `--quiet` to hide progress.
+
 **2. Or crank background sync in Portainer** (then redeploy):
 
 ```env

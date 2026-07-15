@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -20,6 +21,8 @@ from app.services.wa_entity_extract import extract_entities_from_text
 logger = logging.getLogger("monsoon.wa_backfill")
 CHAT_LIST_OFFSET_KEY = "wa_backfill:chat_list_offset"
 
+ProgressCallback = Callable[["ProgressEvent"], None]
+
 
 @dataclass
 class BackfillStats:
@@ -32,16 +35,60 @@ class BackfillStats:
     errors: list[str] = field(default_factory=list)
 
 
+@dataclass
+class ProgressEvent:
+    """Live backfill progress for CLI (optional; background jobs leave unset)."""
+
+    phase: str  # start | chat_start | chat_page | chat_done | finished | error
+    session: str
+    chats_done: int = 0
+    max_chats: int | None = None
+    chat_id: str | None = None
+    chat_name: str | None = None
+    message_offset: int = 0
+    page_messages: int = 0
+    messages_inserted: int = 0
+    messages_skipped: int = 0
+    contacts_upserted: int = 0
+    entities_inserted: int = 0
+    chat_complete: bool = False
+    detail: str = ""
+
+
 class WaBackfillService:
     def __init__(
-        self, db: Session, settings: Settings, *, session: str | None = None
+        self,
+        db: Session,
+        settings: Settings,
+        *,
+        session: str | None = None,
+        on_progress: ProgressCallback | None = None,
     ) -> None:
         self._db = db
         self._settings = settings
         self._waha = WahaClient(settings)
         self._session = (session or settings.waha_session).strip() or settings.waha_session
+        self._on_progress = on_progress
         # JIDs inserted/loaded this run — SQLAlchemy flush batches hide pending rows from SELECT.
         self._contact_by_jid: dict[str, WaContact] = {}
+
+    def _emit(self, event: ProgressEvent) -> None:
+        if self._on_progress is None:
+            return
+        try:
+            self._on_progress(event)
+        except Exception:
+            logger.debug("progress callback failed", exc_info=True)
+
+    def _progress_base(self, stats: BackfillStats, **kwargs: object) -> ProgressEvent:
+        return ProgressEvent(
+            session=self._session,
+            messages_inserted=stats.messages_inserted,
+            messages_skipped=stats.messages_skipped,
+            contacts_upserted=stats.contacts_upserted,
+            entities_inserted=stats.entities_inserted,
+            **kwargs,  # type: ignore[arg-type]
+        )
 
     async def run(
         self,
@@ -53,11 +100,26 @@ class WaBackfillService:
         stats = BackfillStats()
         self._contact_by_jid.clear()
         self._preload_contacts()
+        self._emit(
+            self._progress_base(
+                stats,
+                phase="start",
+                max_chats=max_chats,
+                detail="full" if full else "incremental",
+            )
+        )
         if chat_id:
             chat = await self._upsert_chat({"id": chat_id}, stats)
             if chat:
-                await self._sync_chat_messages(chat, stats, reset_offset=full)
-            self._db.commit()
+                await self._sync_chat_messages(
+                    chat, stats, reset_offset=full, chats_done=1, max_chats=1
+                )
+                self._db.commit()
+            self._emit(
+                self._progress_base(
+                    stats, phase="finished", chats_done=1 if chat else 0, max_chats=1
+                )
+            )
             return stats
 
         offset = 0
@@ -84,6 +146,13 @@ class WaBackfillService:
                     )
                     stats.errors.append(f"session_not_ready:{self._session}")
                     self._db.commit()
+                    self._emit(
+                        self._progress_base(
+                            stats,
+                            phase="error",
+                            detail=f"session not ready ({exc.response.status_code})",
+                        )
+                    )
                     return stats
                 stats.errors.append(f"list_chats offset={offset}: {exc}")
                 logger.exception("list_chats failed")
@@ -102,7 +171,15 @@ class WaBackfillService:
                     break
                 chat = await self._upsert_chat(raw_chat, stats)
                 if chat:
-                    await self._sync_chat_messages(chat, stats, reset_offset=full and chat.backfill_offset == 0)
+                    await self._sync_chat_messages(
+                        chat,
+                        stats,
+                        reset_offset=full,
+                        chats_done=processed + 1,
+                        max_chats=max_chats,
+                    )
+                    # Persist per chat so --status climbs and crashes don't lose a run.
+                    self._db.commit()
                 processed += 1
                 await self._delay()
 
@@ -114,6 +191,14 @@ class WaBackfillService:
             await self._delay()
 
         self._db.commit()
+        self._emit(
+            self._progress_base(
+                stats,
+                phase="finished",
+                chats_done=processed,
+                max_chats=max_chats,
+            )
+        )
         return stats
 
     async def _upsert_chat(self, raw: dict, stats: BackfillStats) -> WaChat | None:
@@ -160,6 +245,8 @@ class WaBackfillService:
         stats: BackfillStats,
         *,
         reset_offset: bool,
+        chats_done: int = 0,
+        max_chats: int | None = None,
     ) -> None:
         if reset_offset:
             chat.backfill_offset = 0
@@ -167,6 +254,20 @@ class WaBackfillService:
 
         page_size = self._settings.monsoon_wa_backfill_message_page_size
         offset = chat.backfill_offset
+        label = (chat.name or chat.chat_id or "?")[:48]
+
+        self._emit(
+            self._progress_base(
+                stats,
+                phase="chat_start",
+                chats_done=chats_done,
+                max_chats=max_chats,
+                chat_id=chat.chat_id,
+                chat_name=label,
+                message_offset=offset,
+                detail="starting",
+            )
+        )
 
         while True:
             try:
@@ -179,6 +280,18 @@ class WaBackfillService:
             except Exception as exc:
                 stats.errors.append(f"messages {chat.chat_id} offset={offset}: {exc}")
                 logger.exception("get_chat_messages failed for %s", chat.chat_id)
+                self._emit(
+                    self._progress_base(
+                        stats,
+                        phase="error",
+                        chats_done=chats_done,
+                        max_chats=max_chats,
+                        chat_id=chat.chat_id,
+                        chat_name=label,
+                        message_offset=offset,
+                        detail=str(exc)[:120],
+                    )
+                )
                 break
 
             if not messages:
@@ -194,6 +307,20 @@ class WaBackfillService:
             chat.backfill_offset = offset
             self._db.flush()
 
+            self._emit(
+                self._progress_base(
+                    stats,
+                    phase="chat_page",
+                    chats_done=chats_done,
+                    max_chats=max_chats,
+                    chat_id=chat.chat_id,
+                    chat_name=label,
+                    message_offset=offset,
+                    page_messages=len(messages),
+                    detail=f"+{inserted} new this page",
+                )
+            )
+
             if len(messages) < page_size:
                 chat.backfill_complete = True
                 break
@@ -203,6 +330,20 @@ class WaBackfillService:
         chat.message_count = self._db.scalar(
             select(func.count()).select_from(WaMessage).where(WaMessage.chat_uuid == chat.id)
         ) or 0
+
+        self._emit(
+            self._progress_base(
+                stats,
+                phase="chat_done",
+                chats_done=chats_done,
+                max_chats=max_chats,
+                chat_id=chat.chat_id,
+                chat_name=label,
+                message_offset=chat.backfill_offset,
+                chat_complete=bool(chat.backfill_complete),
+                detail=f"indexed_count={chat.message_count}",
+            )
+        )
 
     def _index_message(self, chat: WaChat, raw: dict, stats: BackfillStats) -> bool:
         fields = message_fields(raw)
