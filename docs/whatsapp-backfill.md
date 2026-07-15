@@ -48,7 +48,51 @@ docker exec monsoon-app python infra/scripts/wa_backfill.py --chat-id 9182918822
 Background scheduler advances a chat-list cursor (`sync_state` key
 `wa_backfill:chat_list_offset`) so small batches progress across the full session.
 
-Watch:
+## Fast catch-up (individual corpora)
+
+Background defaults (5 chats / 5 min) are deliberately gentle. For a same-day fill:
+
+**1. One-shot per WAHA session** (fastest; run in Portainer console / SSH):
+
+```bash
+# Primary (Prakalp)
+docker exec monsoon-app python infra/scripts/wa_backfill.py --full
+
+# Secondary sessions (case-sensitive names from WAHA dashboard)
+docker exec monsoon-app python infra/scripts/wa_backfill.py --full --session Rashmi
+docker exec monsoon-app python infra/scripts/wa_backfill.py --full --session Prathamesh
+
+# Priority 1:1 / Message yourself first
+docker exec monsoon-app python infra/scripts/wa_backfill.py --chat-id 918291882204@c.us --session prakalp
+```
+
+**2. Or crank background sync in Portainer** (then redeploy):
+
+```env
+MONSOON_WA_SYNC_INTERVAL_MINUTES=1
+MONSOON_WA_SYNC_BATCH_CHATS=25
+MONSOON_WA_BACKFILL_MESSAGE_PAGE_SIZE=200
+MONSOON_WA_BACKFILL_REQUEST_DELAY_MS=50
+```
+
+After catch-up, dial back toward `INTERVAL=5` / `BATCH=5–10` so WAHA stays quiet overnight.
+
+Watch: `curl -s http://127.0.0.1:8080/health/wa-index | python3 -m json.tool`
+
+### Size & risk notes
+
+| Concern | Reality |
+|---------|---------|
+| Postgres size | Fine for household scale. Roughly **0.5–3 KB/msg** with `raw` JSONB; ~100k msgs ≈ hundreds of MB, not tens of GB. |
+| Biggest growth | Per-message `raw` JSONB (full WAHA payload). Bodies alone are cheap. |
+| Hard ceiling | NOWEB store depth (`fullSync=false` ≈ months on device). Monsoon cannot invent older history WAHA never synced. |
+| Going too hard | WAHA/API timeouts, disc spike, or WhatsApp rate pressure on the linked phones — bump delay if you see 5xx / disconnects. |
+
+Multi-session: each phone’s session builds **its own** `session=` corpus. Family groups appear on every member who is in that group.
+
+### LLM query caveat
+
+Personal `ask` / `reflect` today lean on **tasks**, not the full WA index (privacy isolation). Filling the corpus is necessary but not sufficient for “ask me what X said” — that needs person-scoped WA in the ask path (next unlock).
 
 ```bash
 curl -s http://127.0.0.1:8080/health/wa-index | python3 -m json.tool
